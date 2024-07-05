@@ -1,0 +1,11 @@
+Name: "socket.rpc"
+ServerName: "socket.rpc服务:"
+ListenOn: 0.0.0.0:8080
+Etcd:
+  Hosts:
+    - 192.168.33.10:20001
+    - 192.168.33.10:20003
+  Key: socket.rpc
+
+#ServiceId must be between 0 and 1023
+ServiceId: "101" #GRPC服务ID的范围区间 100-199

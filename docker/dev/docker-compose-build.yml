@@ -1,0 +1,13 @@
+version: "3.5"
+
+services:
+  go-store-chat-build:
+    container_name: go-store-chat-build
+    build:
+      context: ${APP_PATH}
+      dockerfile: Dockerfile
+    image: go-store-chat
+    restart: always
+    tty: true
+    volumes:
+      - ${PRO_PATH}/:${MOUNT_PRO_PATH}

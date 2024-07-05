@@ -1,0 +1,14 @@
+syntax = "v1"
+
+info (
+	title:   "socket" // TODO: add title
+	desc:    "socket" // TODO: add description
+	author:  "ther author here"
+	version: "v1.0.0"
+)
+
+service socket-api {
+	@handler Test // TODO: set handler name and delete this comment
+	post /test
+}
+

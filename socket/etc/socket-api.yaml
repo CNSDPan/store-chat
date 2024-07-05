@@ -1,0 +1,9 @@
+Name: "socket"
+ServerName: "socket服务:"
+Host: 0.0.0.0
+Port: 8888
+
+#ServiceId must be between 0 and 1023
+ServiceId: "290" #websocket服务ID的范围区间 290-299
+#连接池水桶数量
+BucketNumber: 4

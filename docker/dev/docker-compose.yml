@@ -1,0 +1,62 @@
+version: "3.5"
+
+services:
+  go-store-chat:
+    container_name: go-store-chat
+    image: go-store-chat
+    #    build:
+    #      context: .
+    #      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - TZ=${TZ}
+    tty: true
+    volumes:
+      - ${GO_PKG_MOD}/:/go/pkg/mod
+      - ${PRO_PATH}/:${MOUNT_PRO_PATH}
+    networks:
+      store:
+        ipv4_address: 172.20.2.99
+  rpc.socket:
+    container_name: rpc.socket
+    image: debian:latest
+    ports:
+      - "8882:8080"
+    environment:
+      - TZ=${TZ}
+      - LANG=${LANG}
+    volumes:
+      - ${APP_PATH}/rpc/socket/bin/rpc.socket.bin:${MOUNT_PATH}/rpc.socket.bin
+      - ${APP_PATH}/rpc/socket/etc:${MOUNT_PATH}/etc
+      - ${APP_PATH}/tmp/:${MOUNT_PATH}/tmp
+      - ${APP_PATH}/tools/:${MOUNT_PATH}/tools
+    command: /bin/bash -c "cd /var/www/store-chat&&./rpc.socket.bin module rpc-socket >> tmp/rpc.socket.err"
+    networks:
+      store:
+        ipv4_address: 172.20.2.102
+  websocket1:
+    container_name: websocket1
+    #使用别人的构造器
+    image: debian:latest
+    ports:
+      - "6991:8888"
+    environment:
+      - TZ=${TZ}
+      - LANG=${LANG}
+    volumes:
+      - ${APP_PATH}/socket/bin/socket.bin:${MOUNT_PATH}/socket.bin
+      - ${APP_PATH}/socket/etc:${MOUNT_PATH}/etc
+      - ${APP_PATH}/tmp/:${MOUNT_PATH}/tmp
+      - ${APP_PATH}/tools/:${MOUNT_PATH}/tools
+    command: /bin/bash -c "cd /var/www/store-chat&&./socket.bin module socket >> tmp/socket.err"
+    networks:
+      store:
+        ipv4_address: 172.20.2.198
+networks:
+  store:
+    name: store
+    driver: bridge
+#    ipam:
+#      config:
+#        - subnet: 172.20.2.0/24 #建议填写宿主机的网关
+#          gateway: 172.20.2.1

@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+package socket;
+import "extend/google/protobuf/any.proto";
+option go_package="./socket";
+
+message Result {
+  string module = 1;
+  string errMsg = 2;
+  string code = 3;
+  string msg = 4;
+  google.protobuf.Any data = 5;
+}
+
+message ReqPing {
+  string ping = 1;
+}
+message ResPing {
+  string pong = 1;
+}
+service Ping {
+  rpc Ping(ReqPing) returns(ResPing);
+}
+
+/******************广播消息处理的结构体*******************/
+message ReqBroadcastMsg{
+  int32 version = 1;
+  int32 operate = 2;
+  string method = 3;
+  string autoToken = 4;
+  int64  roomId = 5;
+  int64  fromUserId = 6;
+  string fromUserName = 7;
+  int64 toClientId = 8;
+  int64 toUserId = 9;
+  string ToUserName = 10;
+  BodyEvent event = 11;
+  string extend = 12;
+}
+message BodyEvent{
+  google.protobuf.Any params = 1;
+  google.protobuf.Any data = 2;
+}
+// 加入聊天房间params内容
+message EventParamsLogin{
+  int64 roomId = 1;
+  int64 clientId = 2;
+  int64 userId = 3;
+  string userName = 4;
+}
+// 普通消息params内容
+message EventParamsNormal{
+  string Message = 3;
+}
+// 加入聊天房间返回data
+message EventDataLogin {
+  int64 roomId = 1;
+  int64 clientId = 2;
+  int64 userId = 3;
+  string userName = 4;
+}
+// 普通消息data内容
+message EventDataNormal{
+  int64 roomId = 1;
+  int64 fromUserId = 2;
+  string fromUserName = 3;
+  string Message = 4;
+}
+
+/******************广播消息处理的结构体*******************/
+
+service Broadcast {
+  rpc BroadcastLogin(ReqBroadcastMsg) returns(Result);
+  rpc BroadcastNormal(ReqBroadcastMsg) returns(Result);
+  rpc BroadcastOut(ReqBroadcastMsg) returns(Result);
+}
