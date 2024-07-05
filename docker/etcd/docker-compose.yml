@@ -1,0 +1,68 @@
+version: '3.5'
+
+services:
+  etcd1:
+    image: "bitnami/etcd:3.5.0"
+    container_name: etcd1
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=${LANG}
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_NAME=etcd1
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd1:2380 #暴露这个成员的url，以便通告给集群中的其他成员
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380 #集群成员通讯监听
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379 #etcd与客户端通信url
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd1:2379 #暴露客户端url
+      - ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster #创建集群
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+    volumes:
+      - '/data/httpd/docker/etcd/node1_data'
+    ports:
+      - "20001:2379"
+      - "20002:2380"
+    tty: true
+    networks:
+      store:
+        ipv4_address: 172.20.2.201
+  etcd2:
+    image: "bitnami/etcd:3.5.0"
+    container_name: etcd2
+    environment:
+      - TZ=Asia/Shanghai
+      - LANG=${LANG}
+      - ALLOW_NONE_AUTHENTICATION=yes
+      - ETCD_NAME=etcd2
+      - ETCD_INITIAL_ADVERTISE_PEER_URLS=http://etcd2:2380 #暴露这个成员的url，以便通告给集群中的其他成员
+      - ETCD_LISTEN_PEER_URLS=http://0.0.0.0:2380 #集群成员通讯监听
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379 #etcd与客户端通信url
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd2:2379 #暴露客户端url
+      - ETCD_INITIAL_CLUSTER_TOKEN=etcd-cluster #创建集群
+      - ETCD_INITIAL_CLUSTER=etcd1=http://etcd1:2380,etcd2=http://etcd2:2380
+      - ETCD_INITIAL_CLUSTER_STATE=new
+    volumes:
+      - '/data/httpd/docker/etcd/node2_data'
+    ports:
+      - "20003:2379"
+      - "20004:2380"
+    tty: true
+    networks:
+      store:
+        ipv4_address: 172.20.2.202
+#  etcdkeeper:
+#    image: deltaprojects/etcdkeeper
+#    container_name: etcdkeeper
+#    environment:
+#      - TZ-Asia/Shanghai
+#    ports:
+#      - "20080:8080"
+#    depends_on:
+#      - etcd1
+#      - etcd2
+#    networks:
+#      store:
+#        ipv4_address: 172.20.2.200
+networks:
+  store:
+    name: store
+    driver: bridge

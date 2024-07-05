@@ -1,0 +1,72 @@
+version: "3.5"
+
+services:
+  mysql-master:
+    image: mysql:5.7.30
+    container_name: mysql-master
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      TZ: "Asia/Shanghai"
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - ${SQL_MYSQL}:/data/mysql/
+      - ${MASTER_MYSQL}/my.cnf:/etc/mysql/my.cnf
+    networks:
+      store:
+        ipv4_address: 172.20.2.40
+    command: [
+      '--server-id=100',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_general_ci',
+      '--log-bin=binlog',
+    ]
+  mysql-slave1:
+    image: mysql:5.7.30
+    container_name: mysql-slave1
+    ports:
+      - "3308:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      TZ: "Asia/Shanghai"
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - ${MASTER_MYSQL}/my.cnf:/etc/mysql/my.cnf
+    command: [
+      '--relay-log=relay-bin',
+      '--server-id=111',
+      '--explicit_defaults_for_timestamp=true',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_general_ci',
+      '--max_connections=3000'
+    ]
+    networks:
+      store:
+        ipv4_address: 172.20.2.41
+  mysql-slave2:
+    image: mysql:5.7.30
+    container_name: mysql-slave2
+    ports:
+      - "3309:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      TZ: "Asia/Shanghai"
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - ${MASTER_MYSQL}/my.cnf:/etc/mysql/my.cnf
+    command: [
+      '--relay-log=relay-bin',
+      '--server-id=112',
+      '--explicit_defaults_for_timestamp=true',
+      '--character-set-server=utf8mb4',
+      '--collation-server=utf8mb4_general_ci',
+      '--max_connections=3000'
+    ]
+    networks:
+      store:
+        ipv4_address: 172.20.2.42
+networks:
+  store:
+    name: store
+    driver: bridge
