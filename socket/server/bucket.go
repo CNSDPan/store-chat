@@ -61,7 +61,18 @@ func (b *Bucket) UnBucket(client *Client) {
 		if len(userClient.RoomClients) < 1 {
 			delete(b.UserClientMap, client.UserId)
 		}
+
 	}
+	var newRooms = b.RoomMap[client.RoomId][:0]
+	if clients, ok := b.RoomMap[client.RoomId]; ok {
+		for _, cl := range clients {
+			if cl.ClientId == client.ClientId {
+				continue
+			}
+			newRooms = append(newRooms, cl)
+		}
+	}
+	b.RoomMap[client.RoomId] = newRooms
 }
 
 // RoutineWriteMsg

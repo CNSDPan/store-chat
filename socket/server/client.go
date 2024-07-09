@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gorilla/websocket"
+	"store-chat/tools/commons"
 	"store-chat/tools/types"
 	"sync"
 	"time"
@@ -55,11 +56,15 @@ func NewUserClient() *UserClient {
 }
 
 // AddClientMap 添加群聊|私聊
-func (uClient *UserClient) AddClientMap(client *Client) {
+func (uClient *UserClient) AddClientMap(client *Client) string {
 	defer uClient.CLock.Unlock()
 	uClient.CLock.Lock()
+	// 判断是否已经加入过房间
+	if _, ok := uClient.RoomClients[client.RoomId]; ok {
+		return commons.SOCKET_BROADCAST_LOGINED
+	}
 	uClient.RoomClients[client.RoomId] = client
-	return
+	return commons.RESPONSE_SUCCESS
 }
 
 // UnClientMap 移除群聊|私聊

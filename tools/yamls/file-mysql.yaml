@@ -1,6 +1,6 @@
 Name: "store-chat-db"
 # mysql读写分离： 1-读写分离（需要具备主从库）、2-单个数据库实例
-Separation: 1
+Separation: 2
 MasterDB: "root:root@tcp(192.168.33.10:3306)/store?loc=Local&parseTime=True&charset=utf8mb4"
 SlaveDB:
   Tag:
@@ -9,3 +9,5 @@ SlaveDB:
   Connect:
     - "root:root@tcp(192.168.33.10:3308)/store?loc=Local&parseTime=True&charset=utf8mb4"
     - "root:root@tcp(192.168.33.10:3309)/store?loc=Local&parseTime=True&charset=utf8mb4"
+
+AloneDB: "root:root@tcp(192.168.33.10:3307)/store?loc=Local&parseTime=True&charset=utf8mb4"

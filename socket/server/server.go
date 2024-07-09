@@ -59,6 +59,18 @@ func (s *Server) writeChannel(client *Client) {
 	ticker := time.NewTicker(PingPeriod)
 	defer func() {
 		ticker.Stop()
+		// 断开连接
+		if client.RoomId == 0 || client.UserId == 0 || client.IsBreak == false {
+			s.Log.Infof("%s readClient.close,RoomId || UserId is 0", s.ServerName)
+			_ = client.WsConn.Close()
+			return
+		}
+		// 移除业务,重复进入房间不移除原有缓存
+		if _, _, err := s.ClientManage.DisConnect(int32(1), client); err != nil {
+			s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
+		}
+		// 移除连接池
+		s.GetBucket(client.UserId).UnBucket(client)
 		_ = client.WsConn.Close()
 		s.Log.Infof("%s readClient.close,user:%s,room:%d,roomClientLen:", s.ServerName, client.Name, client.RoomId, len(s.GetBucket(client.UserId).RoomMap[client.RoomId]))
 	}()
@@ -114,16 +126,16 @@ func (s *Server) readChannel(client *Client) {
 	)
 	defer func() {
 		// 断开连接
-		if client.RoomId == 0 || client.UserId == 0 {
+		if client.RoomId == 0 || client.UserId == 0 || client.IsBreak == false {
 			s.Log.Infof("%s readClient.close,RoomId || UserId is 0", s.ServerName)
 			_ = client.WsConn.Close()
 			return
 		}
-		// 移除业务
+		// 移除业务,重复进入房间不移除原有缓存
 		if _, _, err := s.ClientManage.DisConnect(int32(receiveMsg.Version), client); err != nil {
 			s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
 		}
-		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, client.UserId, client.Name, " 离开了"); err != nil {
+		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, client.UserId, client.Name, client.Name+" 离开了"); err != nil {
 			s.Log.Errorf("%s 移除client推送离开信息;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
 		}
 		// 移除连接池
@@ -149,7 +161,7 @@ func (s *Server) readChannel(client *Client) {
 			return nil
 		})
 		if receiveMsg.Version == 0 || receiveMsg.Operate == 0 || receiveMsg.AutoToken == "" || receiveMsg.RoomId == 0 {
-			s.Log.Errorf("%s 消息缺失必要条件")
+			s.Log.Errorf("%s 消息缺失必要条件 msg:%+v", s.ServerName, receiveMsg)
 			continue
 		}
 		if client.UserId == 0 {
@@ -189,12 +201,19 @@ func (s *Server) readChannel(client *Client) {
 		case consts.OPERATE_CONN_MSG:
 			if code, msg, err, client.RoomId, client.UserId, client.Name = s.ClientManage.InitConnect(receiveMsg); err != nil {
 				s.Log.Errorf("%s 校验client用户的有效性 fail:%s", s.ServerName, err.Error())
+				return
 			} else if code == commons.RESPONSE_SUCCESS && client.UserId > 0 {
 				bucket := s.GetBucket(client.UserId)
 				userClient = bucket.GetUserClient(client.UserId, client.Name)
 				userClient.SystemId = s.ServerIp
 				userClient.AutoToken = receiveMsg.AutoToken
-				userClient.AddClientMap(client)
+				if userClient.AddClientMap(client) == commons.SOCKET_BROADCAST_LOGINED {
+					client.IsBreak = false
+					s.Log.Errorf("%s roomId:%d user:%s 已进入当前房间，请勿重复进入", s.ServerName, receiveMsg.RoomId, client.Name)
+					return
+				}
+
+				s.Log.Infof("池子的用户的连接数：%d", len(userClient.RoomClients))
 				bucket.AddBucket(client.RoomId, client, userClient)
 				// 给当前连接者client信息
 				receiveMsg.Operate = consts.OPERATE_SINGLE_MSG

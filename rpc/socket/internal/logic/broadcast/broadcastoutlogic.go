@@ -2,8 +2,6 @@ package broadcastlogic
 
 import (
 	"context"
-	"github.com/redis/go-redis/v9"
-	"store-chat/dbs"
 	"store-chat/rpc/socket/internal/svc"
 	"store-chat/rpc/socket/pb/socket"
 	"store-chat/tools/commons"
@@ -42,10 +40,5 @@ func (l *BroadcastOutLogic) BroadcastOut(in *socket.ReqBroadcastMsg) (result *so
 			l.Logger.Errorf("%s Broadcast ope:%d code:%s msg:%s fail:%s", result.Module, in.Operate, result.Code, result.Msg, err.Error())
 		}
 	}()
-	if err = dbs.RedisClient.Del(l.ctx, commons.GetSocketClientsKey(in.RoomId, in.FromUserId)).Err(); err != nil && err != redis.Nil {
-		l.Logger.Errorf("%s 移除redis:socket:client:key;ERR:%v", result.Module, err)
-		result.Code = commons.SOCKET_BROADCAST_OUT
-		return result, rpcErr
-	}
 	return &socket.Result{}, nil
 }

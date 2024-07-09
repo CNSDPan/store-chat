@@ -33,7 +33,7 @@ type WriteMsgBody struct {
 	Operate      int    `json:"operate"`
 	Method       string `json:"method"`
 	ResponseTime string `json:"responseTime"`
-	Event        Event  `json:"data"`
+	Event        Event  `json:"event"`
 }
 
 /******************Event 请求&响应结构*********************/

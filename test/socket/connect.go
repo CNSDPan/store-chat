@@ -87,6 +87,8 @@ func (t *TestClient) Read() {
 				t.RevMsgFail <- fmt.Sprintf("读取失败：jsonx.Unmarshal %s\n " + err.Error())
 				continue
 			}
+			fmt.Printf("msg:%v", msg)
+			//fmt.Printf("%s 管道未读条数：%d\n", time.Now().Format("2006-01-02 15:04:05"), len(t.RevMsgChan))
 			t.RevMsgChan <- msg
 		}
 	}()

@@ -10,7 +10,7 @@ type MysqlConf struct {
 	Separation int         `json:",optional"`
 	MasterDB   string      `json:",optional"`         // 主
 	SlaveDB    SlaveDBConf `json:",optional,inherit"` // 从
-	Charset    string      `json:",optional"`
+	AloneDB    string      `json:",optional"`         // 单机
 }
 
 // SlaveDBConf 从配置

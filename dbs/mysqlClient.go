@@ -42,7 +42,7 @@ func initDB(c *yamls.MysqlConf) {
 	var dbConn *gorm.DB
 	var err error
 	dbConn, err = gorm.Open(mysql.New(mysql.Config{
-		DSN: c.MasterDB,
+		DSN: c.AloneDB,
 	}), &gorm.Config{})
 	if err != nil {
 		panic("单个数据库实例初始化失败")

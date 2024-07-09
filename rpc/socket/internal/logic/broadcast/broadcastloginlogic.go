@@ -2,11 +2,9 @@ package broadcastlogic
 
 import (
 	"context"
-	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/zeromicro/go-zero/core/logx"
 	"google.golang.org/protobuf/types/known/anypb"
-	"store-chat/dbs"
 	"store-chat/model/mysqls"
 	"store-chat/rpc/socket/internal/svc"
 	"store-chat/rpc/socket/pb/socket"
@@ -35,7 +33,6 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 		user mysqls.UserApi
 		//ok         bool
 		resultData = &socket.EventDataLogin{}
-		hasKey     int64
 	)
 	result = &socket.Result{
 		Module: l.module,
@@ -66,21 +63,6 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 	//	result.Code = commons.USER_INFO_FAIL
 	//	goto resultHan
 	//}
-	// 判断是否连接过当前房间
-	if hasKey, err = dbs.RedisClient.Exists(l.ctx, commons.GetSocketClientsKey(in.RoomId, user.UserID)).Result(); err != nil && err != redis.Nil {
-		l.Logger.Errorf("%s 校验redis:socket连接key是否存在;ERR:%v", result.Module, err)
-		result.Code = commons.SOCKET_BROADCAST_LOGIN
-		return result, rpcErr
-	}
-	if hasKey > 0 {
-		result.Code = commons.SOCKET_BROADCAST_LOGIN
-		return result, rpcErr
-	}
-	if err = dbs.RedisClient.Set(l.ctx, commons.GetSocketClientsKey(in.RoomId, user.UserID), fmt.Sprintf("%d_%d", in.RoomId, user.UserID), -1).Err(); err != nil {
-		l.Logger.Errorf("%s 存储redis:socket:client:key;ERR:%v", result.Module, err)
-		result.Code = commons.SOCKET_BROADCAST_LOGIN
-		return result, rpcErr
-	}
 	// any类型反射
 	resultData.RoomId = in.RoomId
 	resultData.UserId = user.UserID

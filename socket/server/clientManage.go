@@ -69,7 +69,7 @@ func (cManage *DefaultClientManage) DisConnect(version int32, client *Client) (c
 	result, err = rpc.GrpcSocket.Broadcast.BroadcastOut(context.Background(), &socket.ReqBroadcastMsg{
 		Version:    version,
 		RoomId:     client.RoomId,
-		FromUserId: client.ClientId,
+		FromUserId: client.UserId,
 	})
 	code = result.Code
 	msg = result.Msg
