@@ -6,6 +6,7 @@ import (
 
 // 数据库的user表调试账号
 var UserMap = userTest()
+var StoreMap = storeTest()
 
 func userTest() map[string]mysqls.UserApi {
 	userMaps := make(map[string]mysqls.UserApi)
@@ -40,4 +41,21 @@ func userTest() map[string]mysqls.UserApi {
 		Fund:   int64(10000000),
 	}
 	return userMaps
+}
+
+func storeTest() map[int64]mysqls.StoresApi {
+	storeMaps := make(map[int64]mysqls.StoresApi)
+	storeMaps[int64(1810940924055547904)] = mysqls.StoresApi{
+		StoreID: int64(1810940924055547904),
+		Name:    "蟑螂恶霸",
+	}
+	storeMaps[int64(1810941036622278656)] = mysqls.StoresApi{
+		StoreID: int64(1810941036622278656),
+		Name:    "鲨鱼辣椒",
+	}
+	storeMaps[int64(1810941555327660032)] = mysqls.StoresApi{
+		StoreID: int64(1810941555327660032),
+		Name:    "蜘蛛侦探",
+	}
+	return storeMaps
 }

@@ -43,6 +43,10 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 		AutoToken: receiveMsg.AutoToken,
 		RoomId:    receiveMsg.RoomId,
 	})
+	if err != nil {
+		result.Code, result.Msg = commons.GetCodeMessage(commons.RESPONSE_FAIL)
+		return
+	}
 	if result.Code == commons.RESPONSE_SUCCESS {
 		err = result.Data.UnmarshalTo(data)
 		if err != nil {
@@ -71,8 +75,10 @@ func (cManage *DefaultClientManage) DisConnect(version int32, client *Client) (c
 		RoomId:     client.RoomId,
 		FromUserId: client.UserId,
 	})
-	code = result.Code
-	msg = result.Msg
+	if err != nil {
+		result.Code, result.Msg = commons.GetCodeMessage(commons.RESPONSE_FAIL)
+		return
+	}
 	return
 }
 

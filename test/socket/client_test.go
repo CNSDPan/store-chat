@@ -33,12 +33,12 @@ func TestVirtualUser(t *testing.T) {
 	}
 }
 
-func NewConnect(authToken string) error {
+func NewConnect(authToken string, roomId int64) error {
 	tClient, err := New(socketUrl)
 	if err != nil {
 		return err
 	}
-	err = tClient.Auth(authToken)
+	err = tClient.Auth(authToken, roomId)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func Send(operate int, roomId int64, toUserId int64, msg string, after time.Dura
 // 模拟的账号可再tools/tools/dbTest UserMap得到
 func TestUser1Room1(t *testing.T) {
 	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser1Room1 连接失败:" + err.Error())
 	}
 	// 群聊
@@ -141,7 +141,7 @@ func TestUser1Room1(t *testing.T) {
 }
 func TestUser1Room2(t *testing.T) {
 	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 2); err != nil {
 		panic("TestUser1Room2 连接失败:" + err.Error())
 	}
 	// 群聊
@@ -150,7 +150,7 @@ func TestUser1Room2(t *testing.T) {
 }
 func TestUser1Single1(t *testing.T) {
 	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser1Room2 连接失败:" + err.Error())
 	}
 	// 私信
@@ -159,7 +159,7 @@ func TestUser1Single1(t *testing.T) {
 }
 func TestUser2Room1(t *testing.T) {
 	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser2Room1 连接失败:" + err.Error())
 	}
 	// 群聊
@@ -177,16 +177,25 @@ func TestUser2Room1(t *testing.T) {
 }
 func TestUser2Room2(t *testing.T) {
 	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
-	if err := NewConnect(autoToken); err != nil {
-		panic("TestUser2Room2 连接失败:" + err.Error())
+	if err := NewConnect(autoToken, 2); err != nil {
+		panic("TestUser2Room1 连接失败:" + err.Error())
 	}
 	// 群聊
-	Send(consts.OPERATE_GROUP_MSG, 2, 0, "姥姥", 6*time.Second, 0, autoToken)
+	go func() {
+		for {
+			select {
+			case msg := <-TClient.QAChan:
+				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
+					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "叫爷爷---群聊", 0*time.Second, 1, autoToken)
+				}
+			}
+		}
+	}()
 	Read()
 }
 func TestUser3Room1(t *testing.T) {
 	autoToken := "2gDGQvEugR6Y5riFp2kVLdc7J0O"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser3Room1 连接失败:" + err.Error())
 	}
 	// 群里私信
@@ -204,7 +213,7 @@ func TestUser3Room1(t *testing.T) {
 }
 func TestUser4Room1(t *testing.T) {
 	autoToken := "2gDGQwhqJQczjkCikEvg3StOKSR"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser4Room1 连接失败:" + err.Error())
 	}
 	// 群聊
@@ -222,7 +231,7 @@ func TestUser4Room1(t *testing.T) {
 }
 func TestUser5Single1(t *testing.T) {
 	autoToken := "2gDGQvpg5xTE3Qn0SIzbyDXpdma"
-	if err := NewConnect(autoToken); err != nil {
+	if err := NewConnect(autoToken, 1); err != nil {
 		panic("TestUser4Room1 连接失败:" + err.Error())
 	}
 	// 私信

@@ -23,11 +23,11 @@ func TestBroadcastLogin(t *testing.T) {
 
 	rpcSocketBroadcast := New()
 	result, err := rpcSocketBroadcast.BroadcastLogin(context.Background(), &socket.ReqBroadcastMsg{
-		Version:    int32(1),
-		Operate:    int32(10),
-		Method:     consts.METHOD_ENTER_MSG,
-		AutoToken:  "2gDGQwDxsrX0UG8yRbophdHxHqD",
-		SendRoomId: 1,
+		Version:   int32(1),
+		Operate:   int32(10),
+		Method:    consts.METHOD_ENTER_MSG,
+		AutoToken: "2gDGQwDxsrX0UG8yRbophdHxHqD",
+		RoomId:    1,
 	})
 	if err != nil {
 		panic("rpc.err " + err.Error())

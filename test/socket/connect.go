@@ -49,13 +49,13 @@ func New(url string) (tClient *TestClient, err error) {
 	}, nil
 }
 
-func (t *TestClient) Auth(authToken string) error {
+func (t *TestClient) Auth(authToken string, roomId int64) error {
 	msg := types.ReceiveMsg{
 		Version:   1,
 		Operate:   10,
 		Method:    consts.METHOD_ENTER_MSG,
 		AutoToken: authToken,
-		RoomId:    1,
+		RoomId:    roomId,
 		Event:     types.Event{},
 	}
 	b, err := jsonx.Marshal(msg)

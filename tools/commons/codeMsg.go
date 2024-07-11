@@ -1,6 +1,8 @@
 package commons
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var codeMessage = map[string]string{
 	RESPONSE_SUCCESS:           "success",
@@ -13,15 +15,13 @@ var codeMessage = map[string]string{
 	RESPONSE_APPID_FAIL:        "无效APPID",
 	RESPONSE_SECRET_FAIL:       "无效secret",
 	RESPONSE_SIGN_FAIL:         "无效sign",
-}
 
-var codeMessageByUser = map[string]string{
+	/***************************************/
 	USER_INFO_FAIL:  "用户信息不存在",
 	USER_ID_FAIL:    "用户ID不存在|错误",
 	USER_TOKEN_FAIL: "用户Token不存在|错误",
-}
 
-var codeMessageBySocket = map[string]string{
+	/***************************************/
 	SOCKET_BROADCAST_LOGINED:       "socket已连接",
 	SOCKET_BROADCAST_LOGIN:         "socket连接错误",
 	SOCKET_BROADCAST_OUT:           "socket关闭错误",
@@ -34,15 +34,6 @@ var codeMessageBySocket = map[string]string{
 // @Desc：返回所有codeMsg
 // @return：map[string]string
 func ReturnOverCodeMessage() map[string]string {
-	mergeMap := func(codeMsg map[string]string, m map[string]string) map[string]string {
-		for key, value := range m {
-			codeMsg[key] = value
-		}
-		return codeMsg
-	}
-	codeMessage = mergeMap(codeMessage, codeMessageByUser)
-	codeMessage = mergeMap(codeMessage, codeMessageBySocket)
-
 	return codeMessage
 }
 
