@@ -9236,3 +9236,12 @@ socket服务: Starting server at 706ba640bc35:8888...
 {"@timestamp":"2024-07-11T18:09:06.273+08:00","caller":"stat/usage.go:61","content":"CPU: 16m, MEMORY: Alloc=23.5Mi, TotalAlloc=73.0Mi, Sys=42.8Mi, NumGC=11","level":"stat"}
 {"@timestamp":"2024-07-11T18:10:06.278+08:00","caller":"stat/usage.go:61","content":"CPU: 7m, MEMORY: Alloc=8.5Mi, TotalAlloc=76.3Mi, Sys=42.8Mi, NumGC=12","level":"stat"}
 {"@timestamp":"2024-07-11T18:11:06.276+08:00","caller":"stat/usage.go:61","content":"CPU: 13m, MEMORY: Alloc=11.8Mi, TotalAlloc=79.7Mi, Sys=42.8Mi, NumGC=12","level":"stat"}
+{"@timestamp":"2024-07-11T18:12:06.274+08:00","caller":"stat/usage.go:61","content":"CPU: 15m, MEMORY: Alloc=8.4Mi, TotalAlloc=83.0Mi, Sys=42.8Mi, NumGC=13","level":"stat"}
+{"@timestamp":"2024-07-11T18:13:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 15m, MEMORY: Alloc=11.8Mi, TotalAlloc=86.4Mi, Sys=42.8Mi, NumGC=13","level":"stat"}
+{"@timestamp":"2024-07-11T18:14:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 4m, MEMORY: Alloc=8.4Mi, TotalAlloc=89.8Mi, Sys=42.8Mi, NumGC=14","level":"stat"}
+{"@timestamp":"2024-07-11T18:15:06.281+08:00","caller":"stat/usage.go:61","content":"CPU: 10m, MEMORY: Alloc=11.8Mi, TotalAlloc=93.2Mi, Sys=42.8Mi, NumGC=14","level":"stat"}
+{"@timestamp":"2024-07-11T18:16:06.271+08:00","caller":"stat/usage.go:61","content":"CPU: 16m, MEMORY: Alloc=8.4Mi, TotalAlloc=96.5Mi, Sys=42.8Mi, NumGC=15","level":"stat"}
+{"@timestamp":"2024-07-11T18:17:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 15m, MEMORY: Alloc=11.8Mi, TotalAlloc=99.9Mi, Sys=42.8Mi, NumGC=15","level":"stat"}
+{"@timestamp":"2024-07-11T18:18:06.268+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=8.4Mi, TotalAlloc=103.2Mi, Sys=42.8Mi, NumGC=16","level":"stat"}
+{"@timestamp":"2024-07-11T18:19:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=11.8Mi, TotalAlloc=106.6Mi, Sys=42.8Mi, NumGC=16","level":"stat"}
+{"@timestamp":"2024-07-11T18:20:06.278+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=8.4Mi, TotalAlloc=110.0Mi, Sys=42.8Mi, NumGC=17","level":"stat"}
