@@ -9245,3 +9245,5 @@ socket服务: Starting server at 706ba640bc35:8888...
 {"@timestamp":"2024-07-11T18:18:06.268+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=8.4Mi, TotalAlloc=103.2Mi, Sys=42.8Mi, NumGC=16","level":"stat"}
 {"@timestamp":"2024-07-11T18:19:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=11.8Mi, TotalAlloc=106.6Mi, Sys=42.8Mi, NumGC=16","level":"stat"}
 {"@timestamp":"2024-07-11T18:20:06.278+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=8.4Mi, TotalAlloc=110.0Mi, Sys=42.8Mi, NumGC=17","level":"stat"}
+{"@timestamp":"2024-07-11T18:21:06.270+08:00","caller":"stat/usage.go:61","content":"CPU: 12m, MEMORY: Alloc=11.8Mi, TotalAlloc=113.3Mi, Sys=42.8Mi, NumGC=17","level":"stat"}
+{"@timestamp":"2024-07-11T18:22:06.268+08:00","caller":"stat/usage.go:61","content":"CPU: 7m, MEMORY: Alloc=8.4Mi, TotalAlloc=116.7Mi, Sys=42.8Mi, NumGC=18","level":"stat"}
