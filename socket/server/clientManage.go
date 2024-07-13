@@ -15,9 +15,9 @@ type DefaultClientManage struct {
 
 type ClientManage interface {
 	// InitConnect 交给业务层校验autoToken和处理业务
-	InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, roomId int64, userId int64, userName string)
+	InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, userId int64, userName string)
 	// DisConnect 断连交给业务层处理其他业务
-	DisConnect(version int32, client *Client) (code string, msg string, err error)
+	DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error)
 	// PushSingle 私聊发布交给业务层处理
 	PushBroadcast(receiveMsg types.ReceiveMsg, toUserId int64, toUserName string, sendMsg string) (code string, msg string, err error)
 }
@@ -27,7 +27,7 @@ type ClientManage interface {
 // @param：autoToken
 // @return：userId
 // @return：userName
-func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, roomId int64, userId int64, userName string) {
+func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, userId int64, userName string) {
 	var (
 		result = &socket.Result{}
 		data   = &socket.EventDataLogin{}
@@ -54,7 +54,6 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 		}
 		userId = data.UserId
 		userName = data.UserName
-		roomId = data.RoomId
 	}
 	return
 }
@@ -62,7 +61,7 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 // DisConnect
 // @Desc：断连处理业务逻辑
 // @param：userId
-func (cManage *DefaultClientManage) DisConnect(version int32, client *Client) (code string, msg string, err error) {
+func (cManage *DefaultClientManage) DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error) {
 	var (
 		result = &socket.Result{}
 	)
@@ -72,8 +71,8 @@ func (cManage *DefaultClientManage) DisConnect(version int32, client *Client) (c
 	}()
 	result, err = rpc.GrpcSocket.Broadcast.BroadcastOut(context.Background(), &socket.ReqBroadcastMsg{
 		Version:    version,
-		RoomId:     client.RoomId,
-		FromUserId: client.UserId,
+		RoomId:     roomId,
+		FromUserId: userId,
 	})
 	if err != nil {
 		result.Code, result.Msg = commons.GetCodeMessage(commons.RESPONSE_FAIL)

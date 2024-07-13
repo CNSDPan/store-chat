@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/gorilla/websocket"
-	"store-chat/tools/commons"
+	"store-chat/tools/consts"
 	"store-chat/tools/types"
 	"sync"
 	"time"
@@ -13,33 +13,35 @@ type UserClient struct {
 	SystemId    string
 	AutoToken   string
 	UserId      int64
-	Name        string
+	UserName    string
 	BucketId    uint32
 	RoomClients map[int64]*Client
 }
+
 type Client struct {
-	ConnectTime uint64
-	WsConn      *websocket.Conn
-	ClientId    int64
-	RoomId      int64
-	UserId      int64
-	Name        string
-	IsBreak     bool
-	Extend      string
-	Broadcast   chan types.WriteMsg
+	ConnectTime  uint64
+	WsConn       *websocket.Conn
+	ClientId     int64
+	RoomId       int64
+	UserId       int64
+	IsRepeatConn string
+	Extend       string
+	Broadcast    chan types.WriteMsg
+	HandleClose  chan string
 }
 
 // NewClient 创建客户端
 func NewClient(wsConn *websocket.Conn) *Client {
 	return &Client{
-		ConnectTime: uint64(time.Now().Unix()),
-		WsConn:      wsConn,
-		ClientId:    0,
-		RoomId:      0,
-		UserId:      0,
-		IsBreak:     true,
-		Extend:      "",
-		Broadcast:   make(chan types.WriteMsg, 10000),
+		ConnectTime:  uint64(time.Now().Unix()),
+		WsConn:       wsConn,
+		ClientId:     0,
+		RoomId:       0,
+		UserId:       0,
+		IsRepeatConn: "",
+		Extend:       "",
+		Broadcast:    make(chan types.WriteMsg, 10000),
+		HandleClose:  make(chan string, 100),
 	}
 }
 
@@ -49,22 +51,23 @@ func NewUserClient() *UserClient {
 		SystemId:    "",
 		AutoToken:   "",
 		UserId:      0,
-		Name:        "",
+		UserName:    "",
 		BucketId:    0,
 		RoomClients: make(map[int64]*Client),
 	}
 }
 
 // AddClientMap 添加群聊|私聊
-func (uClient *UserClient) AddClientMap(client *Client) string {
+func (uClient *UserClient) AddClientMap(roomId int64, client *Client) {
 	defer uClient.CLock.Unlock()
 	uClient.CLock.Lock()
 	// 判断是否已经加入过房间
-	if _, ok := uClient.RoomClients[client.RoomId]; ok {
-		return commons.SOCKET_BROADCAST_LOGINED
+	if lastClient, ok := uClient.RoomClients[roomId]; ok && lastClient.ClientId != client.ClientId {
+		lastClient.IsRepeatConn = consts.REPEAT_CONN
+		lastClient.HandleClose <- "run"
 	}
-	uClient.RoomClients[client.RoomId] = client
-	return commons.RESPONSE_SUCCESS
+	client.IsRepeatConn = consts.FIRST_CONN
+	uClient.RoomClients[roomId] = client
 }
 
 // UnClientMap 移除群聊|私聊
@@ -82,14 +85,11 @@ func (uClient *UserClient) GetClient(roomId int64) *Client {
 		return client
 	} else {
 		return &Client{
-			ClientId:    0,
-			WsConn:      nil,
-			ConnectTime: 0,
-			RoomId:      0,
-			UserId:      0,
-			Name:        "",
-			IsBreak:     false,
-			Extend:      "",
+			ClientId:     0,
+			WsConn:       nil,
+			ConnectTime:  0,
+			IsRepeatConn: "",
+			Extend:       "",
 		}
 	}
 }

@@ -57,25 +57,54 @@ func (s *Server) GetBucket(userId int64) *Bucket {
 // @param：client
 func (s *Server) writeChannel(client *Client) {
 	ticker := time.NewTicker(PingPeriod)
+	userClient := new(UserClient)
+	var ok bool
 	defer func() {
 		ticker.Stop()
 		// 断开连接
-		if client.RoomId == 0 || client.UserId == 0 || client.IsBreak == false {
-			s.Log.Infof("%s readClient.close,RoomId || UserId is 0", s.ServerName)
+		if client.UserId == 0 || client.RoomId == 0 || client == nil || client.IsRepeatConn == consts.REPEAT_CONN {
+			s.Log.Infof("%s writeChannel.close;UserId and RoomId is 0,client is nil", s.ServerName)
 			_ = client.WsConn.Close()
+			client = nil
 			return
 		}
-		// 移除业务,重复进入房间不移除原有缓存
-		if _, _, err := s.ClientManage.DisConnect(int32(1), client); err != nil {
-			s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
-		}
+		//if _, _, err := s.ClientManage.DisConnect(int32(1), client.RoomId, userClient.UserId); err != nil {
+		//	s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
+		//}
 		// 移除连接池
 		s.GetBucket(client.UserId).UnBucket(client)
 		_ = client.WsConn.Close()
-		s.Log.Infof("%s readClient.close,user:%s,room:%d,roomClientLen:", s.ServerName, client.Name, client.RoomId, len(s.GetBucket(client.UserId).RoomMap[client.RoomId]))
+		s.Log.Infof("%s writeChannel.close,room:%d,user:%s", s.ServerName, client.RoomId, userClient.UserName)
+		client = nil
 	}()
 	for {
+		if _, ok = s.GetBucket(client.UserId).UserClientMap[client.UserId]; ok {
+			userClient = s.GetBucket(client.UserId).UserClientMap[client.UserId]
+		}
 		select {
+		case handleClose := <-client.HandleClose:
+			// websocket重复握手，关闭之前的,但保留最后一次
+			if handleClose == "run" {
+				b := types.WriteMsgBody{
+					Version:      1,
+					Operate:      consts.OPERATE_SINGLE_MSG,
+					Method:       consts.METHOD_OUT_MSG,
+					ResponseTime: "",
+					Event:        types.Event{Params: "", Data: "您已在别处登录，该设备自动退出"},
+				}
+				body, err := jsonx.Marshal(b)
+				if err != nil {
+					s.Log.Errorf("%s 重复握手 handleClose jsonx.Marshal() fail:%s", s.ServerName, err.Error())
+					return
+				}
+				_ = client.WsConn.SetWriteDeadline(time.Now().Add(WriteWait))
+				// 强制下线
+				if err = client.WsConn.WriteMessage(websocket.TextMessage, body); err != nil {
+					s.Log.Errorf("%s 重复握手 handleClose WriteMessage fail:%s", s.ServerName, err.Error())
+					return
+				}
+				return
+			}
 		case message, ok := <-client.Broadcast:
 			// 每次写之前，都需要设置超时时间，如果只设置一次就会出现总是超时
 			_ = client.WsConn.SetWriteDeadline(time.Now().Add(WriteWait))
@@ -116,41 +145,45 @@ func (s *Server) writeChannel(client *Client) {
 // @param：client
 func (s *Server) readChannel(client *Client) {
 	var (
-		code       string
-		msg        string
-		receiveMsg types.ReceiveMsg
-		userClient *UserClient
-		ok         bool
-		sendMsg    string
-		sendClient *Client
+		code         string
+		msg          string
+		receiveMsg   types.ReceiveMsg
+		userClient   = new(UserClient)
+		roomId       int64
+		ok           bool
+		sendMsg      string
+		toUserClient = new(UserClient)
+		toClient     *Client
 	)
 	defer func() {
 		// 断开连接
-		if client.RoomId == 0 || client.UserId == 0 || client.IsBreak == false {
-			s.Log.Infof("%s readClient.close,RoomId || UserId is 0", s.ServerName)
+		if client.RoomId == 0 || client.UserId == 0 || client == nil || client.IsRepeatConn == consts.REPEAT_CONN {
+			s.Log.Infof("%s readChannel.close,RoomId || UserId is 0", s.ServerName)
 			_ = client.WsConn.Close()
+			client = nil
 			return
 		}
 		// 移除业务,重复进入房间不移除原有缓存
-		if _, _, err := s.ClientManage.DisConnect(int32(receiveMsg.Version), client); err != nil {
-			s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
-		}
-		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, client.UserId, client.Name, client.Name+" 离开了"); err != nil {
+		//if _, _, err := s.ClientManage.DisConnect(int32(receiveMsg.Version), roomId, userClient.UserId); err != nil {
+		//	s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
+		//}
+		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, userClient.UserName+" 离开了"); err != nil {
 			s.Log.Errorf("%s 移除client推送离开信息;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
 		}
 		// 移除连接池
 		s.GetBucket(client.UserId).UnBucket(client)
 		_ = client.WsConn.Close()
-		s.Log.Infof("%s readClient.close,user:%s,room:%d,roomClientLen:", s.ServerName, client.Name, client.RoomId, len(s.GetBucket(client.UserId).RoomMap[client.RoomId]))
+		s.Log.Infof("%s readChannel.close,room:%d,user:%s", s.ServerName, client.RoomId, userClient.UserName)
+		client = nil
 	}()
 	for {
 		messageType, message, err := client.WsConn.ReadMessage()
 		if err != nil || (message == nil && messageType == -1) {
-			s.Log.Errorf("客户端断连：%d; messageType:%d; fail:%v", messageType, client.UserId, err)
+			s.Log.Errorf("客户端【%s】断连; messageType:%d; fail:%v", userClient.UserName, messageType, err)
 			return
 		}
 		if err = jsonx.Unmarshal(message, &receiveMsg); err != nil {
-			s.Log.Errorf("客户端：%d; message 转换 types.ReceiveMsg fail:%s", client.UserId, err.Error())
+			s.Log.Errorf("客户端【%s】断连; message 转换 types.ReceiveMsg fail:%s", userClient.UserName, err.Error())
 			continue
 		}
 		// 每次需设置读超时时间，否则接收不到
@@ -164,70 +197,57 @@ func (s *Server) readChannel(client *Client) {
 			s.Log.Errorf("%s 消息缺失必要条件 msg:%+v", s.ServerName, receiveMsg)
 			continue
 		}
-		if client.UserId == 0 {
-			userClient = &UserClient{}
-		}
+		roomId = receiveMsg.RoomId
 		receiveMsg.FromClientId = client.ClientId
 		receiveMsg.FromUserId = userClient.UserId
-		receiveMsg.FromUserName = userClient.Name
+		receiveMsg.FromUserName = userClient.UserName
 		switch receiveMsg.Operate {
 		case consts.OPERATE_SINGLE_MSG:
-			// 这里麻烦了点，还有另外一个思路，给当前client结构体增加nextClient和lastClient；
-			// 1、每次新的client校验有效性后，将上一个client赋值到当前client的lastClient，而nextClient这时候肯定是空的
-			// 2、第一步操作的同时，要把上一个client的nextClient进行赋值当前client，
-			// 3、client断开前，lastClient和nextClient都要进行维护并重新赋值上下client
-			// 这样就可以获取当前client时，直接取上一个或下一个client进行发送，无效在进行查找
-			s.Log.Infof("客户端：%s;私聊:%d send:%s", userClient.Name, client.RoomId, receiveMsg.Event.Params)
 			if sendMsg, ok = receiveMsg.Event.Params.(string); !ok {
 				continue
 			}
 			bucket := s.GetBucket(receiveMsg.ToUserId)
-			if userClient, ok = bucket.UserClientMap[receiveMsg.ToUserId]; ok {
-				if sendClient, ok = userClient.RoomClients[receiveMsg.RoomId]; ok {
-					receiveMsg.ToClientId = sendClient.ClientId
-					receiveMsg.ToUserId = sendClient.UserId
-					receiveMsg.ToUserName = sendClient.Name
-					if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, sendClient.UserId, sendClient.Name, sendMsg); err != nil {
-						s.Log.Errorf("%s %s 私聊 %s：code:%s msg:%s fail:%s", s.ServerName, client.Name, sendClient.Name, code, msg, err.Error())
+			if toUserClient, ok = bucket.UserClientMap[receiveMsg.ToUserId]; ok {
+				if toClient, ok = toUserClient.RoomClients[roomId]; ok {
+					receiveMsg.ToClientId = toClient.ClientId
+					receiveMsg.ToUserId = toUserClient.UserId
+					receiveMsg.ToUserName = toUserClient.UserName
+					if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, toUserClient.UserId, toUserClient.UserName, sendMsg); err != nil {
+						s.Log.Errorf("%s %s 私聊 %s：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, toUserClient.UserName, code, msg, err.Error())
 					}
 				}
 			}
 		case consts.OPERATE_GROUP_MSG:
 			if sendMsg, ok = receiveMsg.Event.Params.(string); ok {
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, client.UserId, client.Name, sendMsg); err != nil {
-					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, client.Name, code, msg, err.Error())
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, 0, "", sendMsg); err != nil {
+					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			}
 		case consts.OPERATE_CONN_MSG:
-			if code, msg, err, client.RoomId, client.UserId, client.Name = s.ClientManage.InitConnect(receiveMsg); err != nil {
+			if code, msg, err, client.UserId, userClient.UserName = s.ClientManage.InitConnect(receiveMsg); err != nil {
 				s.Log.Errorf("%s 校验client用户的有效性 fail:%s", s.ServerName, err.Error())
 				return
 			} else if code == commons.RESPONSE_SUCCESS && client.UserId > 0 {
+				client.RoomId = roomId
 				bucket := s.GetBucket(client.UserId)
-				userClient = bucket.GetUserClient(client.UserId, client.Name)
+				userClient = bucket.GetUserClient(client.UserId, userClient.UserName)
 				userClient.SystemId = s.ServerIp
 				userClient.AutoToken = receiveMsg.AutoToken
-				if userClient.AddClientMap(client) == commons.SOCKET_BROADCAST_LOGINED {
-					client.IsBreak = false
-					s.Log.Errorf("%s roomId:%d user:%s 已进入当前房间，请勿重复进入", s.ServerName, receiveMsg.RoomId, client.Name)
-					return
-				}
-
+				bucket.AddBucket(roomId, client, userClient)
 				s.Log.Infof("池子的用户的连接数：%d", len(userClient.RoomClients))
-				bucket.AddBucket(client.RoomId, client, userClient)
 				// 给当前连接者client信息
 				receiveMsg.Operate = consts.OPERATE_SINGLE_MSG
 				receiveMsg.Method = consts.METHOD_ENTER_MSG
 				receiveMsg.FromUserId = userClient.UserId
-				receiveMsg.FromUserName = userClient.Name
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.Name, ""); err != nil {
-					s.Log.Errorf("%s %s 返回私人消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.Name, code, msg, err.Error())
+				receiveMsg.FromUserName = userClient.UserName
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, ""); err != nil {
+					s.Log.Errorf("%s %s 返回私人消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 				// 广播群聊通知有人进来了
 				receiveMsg.Operate = consts.OPERATE_GROUP_MSG
 				receiveMsg.Method = consts.METHOD_NORMAL_MSG
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.Name, fmt.Sprintf("%s 进来了", client.Name)); err != nil {
-					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.Name, code, msg, err.Error())
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, fmt.Sprintf("%s 进来了", userClient.UserName)); err != nil {
+					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			}
 		}

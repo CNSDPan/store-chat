@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"store-chat/tools/consts"
 	"store-chat/tools/types"
 	"sync"
@@ -9,19 +10,26 @@ import (
 type Bucket struct {
 	Clock         sync.RWMutex
 	UserClientMap map[int64]*UserClient
-	RoomMap       map[int64][]*Client
+	RoomMap       map[int64]*Room
 	Routines      chan types.WriteMsg
 	Idx           uint32
+}
+
+type Room struct {
+	RoomId   int64
+	RoomName string
+	Clients  []*Client
 }
 
 // NewBucket 初始化池子
 func NewBucket(cpu uint) []*Bucket {
 	buckets := make([]*Bucket, cpu)
 	for i := uint(0); i < cpu; i++ {
+		roomMap := make(map[int64]*Room, 1)
 		buckets[i] = &Bucket{
 			Clock:         sync.RWMutex{},
 			UserClientMap: make(map[int64]*UserClient),
-			RoomMap:       make(map[int64][]*Client),
+			RoomMap:       roomMap,
 			Routines:      make(chan types.WriteMsg, 1000),
 			Idx:           uint32(i),
 		}
@@ -38,7 +46,7 @@ func (b *Bucket) GetUserClient(userId int64, userName string) *UserClient {
 	if !ok {
 		userClient = NewUserClient()
 		userClient.UserId = userId
-		userClient.Name = userName
+		userClient.UserName = userName
 		userClient.BucketId = b.Idx
 	}
 	return userClient
@@ -48,8 +56,21 @@ func (b *Bucket) GetUserClient(userId int64, userName string) *UserClient {
 func (b *Bucket) AddBucket(roomId int64, client *Client, userClient *UserClient) {
 	defer b.Clock.Unlock()
 	b.Clock.Lock()
+	userClient.AddClientMap(roomId, client)
 	b.UserClientMap[userClient.UserId] = userClient
-	b.RoomMap[roomId] = append(b.RoomMap[roomId], client)
+	if _, ok := b.RoomMap[roomId]; !ok {
+		room := &Room{
+			RoomId:   roomId,
+			RoomName: "",
+			Clients:  make([]*Client, 0),
+		}
+		room.Clients = append(room.Clients, client)
+		b.RoomMap[roomId] = room
+	} else {
+		b.RoomMap[roomId].RoomId = roomId
+		b.RoomMap[roomId].Clients = append(b.RoomMap[roomId].Clients, client)
+	}
+	fmt.Printf("room.Clients:%+v \n", len(b.RoomMap[roomId].Clients))
 }
 
 // UnBucket 将客户端移除连接池
@@ -57,22 +78,22 @@ func (b *Bucket) UnBucket(client *Client) {
 	defer b.Clock.Unlock()
 	b.Clock.Lock()
 	if userClient, ok := b.UserClientMap[client.UserId]; ok {
+		fmt.Printf("移除连接池:rid:%d u:%s", client.RoomId, userClient.UserName)
 		userClient.UnClientMap(client.RoomId)
-		if len(userClient.RoomClients) < 1 {
+		if len(userClient.RoomClients) == 0 {
 			delete(b.UserClientMap, client.UserId)
 		}
-
 	}
-	var newRooms = b.RoomMap[client.RoomId][:0]
-	if clients, ok := b.RoomMap[client.RoomId]; ok {
-		for _, cl := range clients {
+	if room, ok := b.RoomMap[client.RoomId]; ok {
+		var newRooms = b.RoomMap[client.RoomId].Clients[:0]
+		for _, cl := range room.Clients {
 			if cl.ClientId == client.ClientId {
 				continue
 			}
 			newRooms = append(newRooms, cl)
 		}
+		b.RoomMap[client.RoomId].Clients = newRooms
 	}
-	b.RoomMap[client.RoomId] = newRooms
 }
 
 // RoutineWriteMsg
@@ -81,16 +102,15 @@ func (b *Bucket) RoutineWriteMsg() {
 	for {
 		select {
 		case writeMsg := <-b.Routines:
-			switch writeMsg.Operate {
-			case consts.OPERATE_SINGLE_MSG:
+			if writeMsg.Operate == consts.OPERATE_SINGLE_MSG {
 				if userClient := b.GetUserClient(writeMsg.ToUserId, ""); userClient != nil {
 					if client := userClient.GetClient(writeMsg.RoomId); client != nil {
 						client.Broadcast <- writeMsg
 					}
 				}
-			case consts.OPERATE_GROUP_MSG:
-				if clients, ok := b.RoomMap[writeMsg.RoomId]; ok {
-					for _, client := range clients {
+			} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
+				if room, ok := b.RoomMap[writeMsg.RoomId]; ok {
+					for _, client := range room.Clients {
 						client.Broadcast <- writeMsg
 					}
 				}

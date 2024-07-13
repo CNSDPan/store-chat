@@ -59,6 +59,10 @@ func (l *BroadcastNormalLogic) BroadcastNormal(in *socket.ReqBroadcastMsg) (resu
 			Operate:      int(in.Operate),
 			Method:       in.Method,
 			ResponseTime: time.Now().Format("2006-01-02 15:04:05"),
+			Event: types.Event{
+				Params: "",
+				Data:   "",
+			},
 		},
 	}
 	switch in.Method {

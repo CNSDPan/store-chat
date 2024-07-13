@@ -69,6 +69,7 @@ func (sub *Subscribe) SubReceive() {
 						bucket.Routines <- writeMsg
 					} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
 						// 群消息
+
 						for _, bucket := range server.DefaultServer.Buckets {
 							bucket.Routines <- writeMsg
 						}

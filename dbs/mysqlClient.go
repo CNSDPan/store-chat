@@ -2,7 +2,6 @@ package dbs
 
 import (
 	"context"
-	"fmt"
 	"github.com/zeromicro/go-zero/core/logx"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -111,7 +110,6 @@ func initRWDB(c *yamls.MysqlConf, logg logx.Logger) {
 // @param：dbName
 // @return：db | nil
 func GetReadDB(dbName string) (db *gorm.DB) {
-	fmt.Printf("dbName %v", dbName)
 	var ok bool
 	if yamls.MysqlCon.Separation == yamls.SEPARATION_YES {
 		db, ok = dbRWMysql[dbName]

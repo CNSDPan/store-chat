@@ -7,6 +7,7 @@ import (
 )
 
 const (
+	USER_STATUS_0 int8 = 0
 	USER_STATUS_1 int8 = 1
 	USER_STATUS_2 int8 = 2
 )
@@ -92,4 +93,13 @@ func (obj *UsersMgr) SelectPage(page IPage, opts ...Option) (resultPage IPage, e
 
 	resultPage.SetRecords(results)
 	return
+}
+
+func (obj *UsersMgr) WithToken(token string) Option {
+	return optionFunc(func(o *options) { o.query["token"] = token })
+}
+
+// WithStatus status获取 1=启用 0=禁用
+func (obj *UsersMgr) WithStatus(status int8) Option {
+	return optionFunc(func(o *options) { o.query["status"] = status })
 }
