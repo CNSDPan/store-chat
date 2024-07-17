@@ -7,7 +7,6 @@ import (
 	"store-chat/tools/tools"
 	"store-chat/tools/types"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 )
@@ -18,6 +17,9 @@ const (
 )
 
 var TClient *TestClient
+var user = new(DefaultUser)
+
+var store = tools.StoreMap
 
 func TestVirtualUser(t *testing.T) {
 	var (
@@ -33,52 +35,70 @@ func TestVirtualUser(t *testing.T) {
 	}
 }
 
-func NewConnect(authToken string, roomId int64) error {
-	tClient, err := New(socketUrl)
-	if err != nil {
-		return err
+func TestUser1Room1(t *testing.T) {
+	user.InitUserInfo("2gDGQwDxsrX0UG8yRbophdHxHqD")
+	user.InitSocket(socketUrl)
+	user.Client.Auth(user.AuthToken, 1810940924055547904, user.UserId)
+	go func() {
+		Read()
+	}()
+	SendQA()
+	select {
+	case isClose := <-user.IsClose:
+		if isClose == 1 {
+			goto END
+		}
 	}
-	err = tClient.Auth(authToken, roomId)
-	if err != nil {
-		return err
+END:
+	fmt.Printf("关闭连接\n")
+	return
+}
+
+func TestUser2Room1(t *testing.T) {
+	user.InitUserInfo("2gDGQugkyFF4MI10hK7WfT3W3Pe")
+	user.InitSocket(socketUrl)
+	user.Client.Auth(user.AuthToken, 1810940924055547904, user.UserId)
+	go func() {
+		Read()
+	}()
+	SendQA()
+	select {
+	case isClose := <-user.IsClose:
+		if isClose == 1 {
+			goto END
+		}
 	}
-	TClient = tClient
-	TClient.Send()
-	TClient.Read()
-	return nil
+END:
+	fmt.Printf("关闭连接\n")
+	return
 }
 
 func Read() {
 	var (
-		roomIdStr   string
 		clientIdStr string
+		roomIdStr   string
 		userIdStr   string
-		qa          = QA{
-			roomId:       0,
-			fromUserId:   0,
-			fromUserName: "",
-		}
+		roomId      int64
+		fromUserId  int64
 	)
 	for {
 		select {
-		case e := <-TClient.RevMsgFail:
-			fmt.Println(e)
-		case m := <-TClient.RevMsgChan:
-			switch m.Method {
-			case consts.METHOD_ENTER_MSG:
+		case e := <-user.Client.RevMsgFail:
+			_ = user.Client.Conn.Close()
+			user.IsClose <- 1
+			fmt.Printf("断开连接：%v\n", e)
+			goto END
+		case m := <-user.Client.RevMsgChan:
+			if m.Method == consts.METHOD_ENTER_MSG {
 				if data, ok := m.Event.Data.(map[string]interface{}); !ok {
-					fmt.Println("m.Event.Data typeOf types.DataByEnter not ok\n ")
+					fmt.Printf("m.Event.Data typeOf types.DataByEnter not ok\n")
 				} else {
-					//fmt.Printf("enter:%+v\n", data)
 					clientIdStr = data["clientId"].(string)
-					userIdStr = data["userId"].(string)
-					TClient.ClientId, _ = strconv.ParseInt(clientIdStr, 10, 64)
-					TClient.UserId, _ = strconv.ParseInt(userIdStr, 10, 64)
-					TClient.UserName = data["userName"].(string)
+					user.Client.ClientId, _ = strconv.ParseInt(clientIdStr, 10, 64)
 				}
-			case consts.METHOD_NORMAL_MSG:
+			} else if m.Method == consts.METHOD_NORMAL_MSG {
 				if data, ok := m.Event.Data.(map[string]interface{}); !ok {
-					fmt.Println("m.Event.Data typeOf types.DataByNormal not ok\n ")
+					fmt.Printf("m.Event.Data typeOf types.DataByNormal not ok\n")
 				} else {
 					if m.Operate == consts.OPERATE_SINGLE_MSG {
 						fmt.Printf(m.ResponseTime+":私聊消息：\n     %s\n", data["message"])
@@ -87,17 +107,22 @@ func Read() {
 					}
 					roomIdStr, _ = data["roomId"].(string)
 					userIdStr = data["fromUserId"].(string)
-					//userIdStr = "1"
-					qa.roomId, _ = strconv.ParseInt(roomIdStr, 10, 64)
-					qa.fromUserId, _ = strconv.ParseInt(userIdStr, 10, 64)
-					qa.fromUserName = data["fromUserName"].(string)
-					qa.message = data["message"].(string)
-					TClient.QAChan <- qa
+					if user.UserName == "蟑螂恶霸" && data["message"].(string) == "我是谁" {
+						roomId, _ = strconv.ParseInt(roomIdStr, 10, 64)
+						fromUserId, _ = strconv.ParseInt(userIdStr, 10, 64)
+						user.Client.QAChan <- QA{
+							roomId:       roomId,
+							fromUserId:   fromUserId,
+							fromUserName: data["fromUserName"].(string),
+							message:      data["message"].(string),
+						}
+					}
 				}
 			}
-
 		}
 	}
+END:
+	return
 }
 
 func Send(operate int, roomId int64, toUserId int64, msg string, after time.Duration, sendNum int, autoToken string) {
@@ -105,7 +130,7 @@ func Send(operate int, roomId int64, toUserId int64, msg string, after time.Dura
 		Version:      1,
 		Operate:      operate,
 		Method:       consts.METHOD_NORMAL_MSG,
-		AutoToken:    autoToken,
+		AuthToken:    autoToken,
 		RoomId:       roomId,
 		FromClientId: TClient.ClientId,
 		ToUserId:     toUserId,
@@ -121,121 +146,134 @@ func Send(operate int, roomId int64, toUserId int64, msg string, after time.Dura
 			select {
 			case <-time.After(after):
 				sendIndex++
-				send.Event.Params = TClient.UserName + ":" + msg
+				send.Event.Params = user.UserName + ":" + msg
 				TClient.SendMsgChan <- send
 			}
 		}
 	}()
 }
 
-// 模拟的账号可再tools/tools/dbTest UserMap得到
-func TestUser1Room1(t *testing.T) {
-	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser1Room1 连接失败:" + err.Error())
-	}
-	// 群聊
-	Send(consts.OPERATE_GROUP_MSG, 1, 0, "说:爸爸的爸爸叫什么", 5*time.Second, 0, autoToken)
-	Read()
+func SendQA() {
+	go func() {
+		for {
+			select {
+			case msg := <-user.Client.QAChan:
+				Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "你是 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
+				Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "再偷偷私信你~你叫 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
+			}
+		}
+	}()
+}
 
-}
-func TestUser1Room2(t *testing.T) {
-	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken, 2); err != nil {
-		panic("TestUser1Room2 连接失败:" + err.Error())
-	}
-	// 群聊
-	Send(consts.OPERATE_GROUP_MSG, 2, 0, "妈妈的妈妈叫什么", 4*time.Second, 3, autoToken)
-	Read()
-}
-func TestUser1Single1(t *testing.T) {
-	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser1Room2 连接失败:" + err.Error())
-	}
-	// 私信
-	Send(consts.OPERATE_SINGLE_MSG, 1, 0, "我在跟你私聊，群里的人不知道", 4*time.Second, 0, autoToken)
-	Read()
-}
-func TestUser2Room1(t *testing.T) {
-	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser2Room1 连接失败:" + err.Error())
-	}
-	// 群聊
-	go func() {
-		for {
-			select {
-			case msg := <-TClient.QAChan:
-				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
-					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "叫爷爷---群聊", 0*time.Second, 1, autoToken)
-				}
-			}
-		}
-	}()
-	Read()
-}
-func TestUser2Room2(t *testing.T) {
-	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
-	if err := NewConnect(autoToken, 2); err != nil {
-		panic("TestUser2Room1 连接失败:" + err.Error())
-	}
-	// 群聊
-	go func() {
-		for {
-			select {
-			case msg := <-TClient.QAChan:
-				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
-					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "叫爷爷---群聊", 0*time.Second, 1, autoToken)
-				}
-			}
-		}
-	}()
-	Read()
-}
-func TestUser3Room1(t *testing.T) {
-	autoToken := "2gDGQvEugR6Y5riFp2kVLdc7J0O"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser3Room1 连接失败:" + err.Error())
-	}
-	// 群里私信
-	go func() {
-		for {
-			select {
-			case msg := <-TClient.QAChan:
-				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
-					Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "应该叫做爷爷---私信", 0*time.Second, 1, autoToken)
-				}
-			}
-		}
-	}()
-	Read()
-}
-func TestUser4Room1(t *testing.T) {
-	autoToken := "2gDGQwhqJQczjkCikEvg3StOKSR"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser4Room1 连接失败:" + err.Error())
-	}
-	// 群聊
-	go func() {
-		for {
-			select {
-			case msg := <-TClient.QAChan:
-				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
-					Send(consts.OPERATE_GROUP_MSG, msg.roomId, msg.fromUserId, "不知道叫什么---群聊", 0*time.Second, 1, autoToken)
-				}
-			}
-		}
-	}()
-	Read()
-}
-func TestUser5Single1(t *testing.T) {
-	autoToken := "2gDGQvpg5xTE3Qn0SIzbyDXpdma"
-	if err := NewConnect(autoToken, 1); err != nil {
-		panic("TestUser4Room1 连接失败:" + err.Error())
-	}
-	// 私信
-
-	Send(consts.OPERATE_SINGLE_MSG, 1, 0, "大哥原来是你私信我啊", 5*time.Second, 0, autoToken)
-	Read()
-}
+//
+//// 模拟的账号可再tools/tools/dbTest UserMap得到
+//func TestUser1Room1(t *testing.T) {
+//	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser1Room1 连接失败:" + err.Error())
+//	}
+//	// 群聊
+//	Send(consts.OPERATE_GROUP_MSG, 1, 0, "说:爸爸的爸爸叫什么", 5*time.Second, 0, autoToken)
+//	Read()
+//
+//}
+//func TestUser1Room2(t *testing.T) {
+//	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
+//	if err := NewConnect(autoToken, 2); err != nil {
+//		panic("TestUser1Room2 连接失败:" + err.Error())
+//	}
+//	// 群聊
+//	Send(consts.OPERATE_GROUP_MSG, 2, 0, "妈妈的妈妈叫什么", 4*time.Second, 3, autoToken)
+//	Read()
+//}
+//func TestUser1Single1(t *testing.T) {
+//	autoToken := "2gDGQwDxsrX0UG8yRbophdHxHqD"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser1Room2 连接失败:" + err.Error())
+//	}
+//	// 私信
+//	Send(consts.OPERATE_SINGLE_MSG, 1, 0, "我在跟你私聊，群里的人不知道", 4*time.Second, 0, autoToken)
+//	Read()
+//}
+//func TestUser2Room1(t *testing.T) {
+//	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser2Room1 连接失败:" + err.Error())
+//	}
+//	// 群聊
+//	go func() {
+//		for {
+//			select {
+//			case msg := <-TClient.QAChan:
+//				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
+//					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "叫爷爷---群聊", 0*time.Second, 1, autoToken)
+//				}
+//			}
+//		}
+//	}()
+//	Read()
+//}
+//func TestUser2Room2(t *testing.T) {
+//	autoToken := "2gDGQugkyFF4MI10hK7WfT3W3Pe"
+//	if err := NewConnect(autoToken, 2); err != nil {
+//		panic("TestUser2Room1 连接失败:" + err.Error())
+//	}
+//	// 群聊
+//	go func() {
+//		for {
+//			select {
+//			case msg := <-TClient.QAChan:
+//				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
+//					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "叫爷爷---群聊", 0*time.Second, 1, autoToken)
+//				}
+//			}
+//		}
+//	}()
+//	Read()
+//}
+//func TestUser3Room1(t *testing.T) {
+//	autoToken := "2gDGQvEugR6Y5riFp2kVLdc7J0O"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser3Room1 连接失败:" + err.Error())
+//	}
+//	// 群里私信
+//	go func() {
+//		for {
+//			select {
+//			case msg := <-TClient.QAChan:
+//				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
+//					Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "应该叫做爷爷---私信", 0*time.Second, 1, autoToken)
+//				}
+//			}
+//		}
+//	}()
+//	Read()
+//}
+//func TestUser4Room1(t *testing.T) {
+//	autoToken := "2gDGQwhqJQczjkCikEvg3StOKSR"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser4Room1 连接失败:" + err.Error())
+//	}
+//	// 群聊
+//	go func() {
+//		for {
+//			select {
+//			case msg := <-TClient.QAChan:
+//				if strings.Contains(msg.message, "爸爸的爸爸叫什么") {
+//					Send(consts.OPERATE_GROUP_MSG, msg.roomId, msg.fromUserId, "不知道叫什么---群聊", 0*time.Second, 1, autoToken)
+//				}
+//			}
+//		}
+//	}()
+//	Read()
+//}
+//func TestUser5Single1(t *testing.T) {
+//	autoToken := "2gDGQvpg5xTE3Qn0SIzbyDXpdma"
+//	if err := NewConnect(autoToken, 1); err != nil {
+//		panic("TestUser4Room1 连接失败:" + err.Error())
+//	}
+//	// 私信
+//
+//	Send(consts.OPERATE_SINGLE_MSG, 1, 0, "大哥原来是你私信我啊", 5*time.Second, 0, autoToken)
+//	Read()
+//}

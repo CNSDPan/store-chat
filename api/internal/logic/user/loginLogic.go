@@ -2,10 +2,16 @@ package user
 
 import (
 	"context"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 	"store-chat/api/internal/svc"
 	"store-chat/api/internal/types"
+	"store-chat/dbs"
 	"store-chat/model/mysqls"
 	"store-chat/tools/commons"
+	"store-chat/tools/tools"
+	"strconv"
+	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -36,6 +42,31 @@ func (l *LoginLogic) Login(req *types.ReqLogin) (resp *types.Response, err error
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_INFO_FAIL)
 		return
 	}
+	if user.Authorization, err = dbs.RedisClient.Get(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10)).Result(); err != nil && err != redis.Nil {
+		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_GET)
+		return
+	} else if user.Authorization != "" && req.Source != "goTest" {
+		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_LOGINED)
+		return
+	}
+
+	if user.Authorization != "" {
+		goto END
+	}
+	if user.Authorization, err = tools.JWTCreateAuthorizationBy32(jwt.MapClaims{
+		"iss": l.svcCtx.Config.Name,
+		"sub": user.UserID,
+		"aud": user.Name,
+		"exp": time.Now().Add(time.Second * time.Duration(l.svcCtx.Config.AccessExpire)).UnixMilli(),
+	}); err != nil {
+		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_CREATE)
+		return
+	}
+	if err = dbs.RedisClient.SetNX(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10), user.Authorization, time.Duration(l.svcCtx.Config.AccessExpire)*time.Second).Err(); err != nil {
+		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_CREATE)
+		return
+	}
+END:
 	resp.Data = user
 	return
 }

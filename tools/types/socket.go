@@ -5,7 +5,7 @@ type ReceiveMsg struct {
 	Version      int    `json:"version"`             // 用于区分业务版本号
 	Operate      int    `json:"operate"`             // 操作
 	Method       string `json:"method"`              // 事件
-	AutoToken    string `json:"autoToken"`           // token
+	AuthToken    string `json:"authToken"`           // token
 	RoomId       int64  `json:"roomId,string"`       // 房间
 	FromClientId int64  `json:"fromClientId,string"` // 消息发送人client
 	FromUserId   int64  `json:"fromUserId"`          // 消息发送人ID
@@ -21,7 +21,7 @@ type WriteMsg struct {
 	Version    int          `json:"version"`
 	Operate    int          `json:"operate"`
 	Method     string       `json:"method"`
-	AutoToken  string       `json:"autoToken"`
+	AuthToken  string       `json:"authToken"`
 	RoomId     int64        `json:"RoomId,string"`
 	FromUserId int64        `json:"fromClientId,string"`
 	ToUserId   int64        `json:"toUserId,string"`

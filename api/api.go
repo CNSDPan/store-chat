@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"store-chat/dbs"
 
 	"store-chat/api/internal/config"
 	"store-chat/api/internal/handler"
@@ -26,6 +27,10 @@ func main() {
 	ctx := svc.NewServiceContext(c)
 	handler.RegisterHandlers(server, ctx)
 
+	// 初始化redis
+	if _, err := dbs.NewRedisClient(); err != nil {
+		panic(c.ServerName + " redisClient init fail:" + err.Error())
+	}
 	fmt.Printf("Starting server at %s:%d...\n", c.Host, c.Port)
 	server.Start()
 }

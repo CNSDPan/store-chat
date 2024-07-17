@@ -14,7 +14,7 @@ type DefaultClientManage struct {
 }
 
 type ClientManage interface {
-	// InitConnect 交给业务层校验autoToken和处理业务
+	// InitConnect 交给业务层校验authToken和处理业务
 	InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, userId int64, userName string)
 	// DisConnect 断连交给业务层处理其他业务
 	DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error)
@@ -24,7 +24,10 @@ type ClientManage interface {
 
 // InitConnect
 // @Desc：连接处理业务逻辑
-// @param：autoToken
+// @param：receiveMsg
+// @return：code
+// @return：msg
+// @return：err
 // @return：userId
 // @return：userName
 func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, userId int64, userName string) {
@@ -37,11 +40,12 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 		msg = result.Msg
 	}()
 	result, err = rpc.GrpcSocket.Broadcast.BroadcastLogin(context.Background(), &socket.ReqBroadcastMsg{
-		Version:   int32(receiveMsg.Version),
-		Operate:   int32(consts.OPERATE_CONN_MSG),
-		Method:    receiveMsg.Method,
-		AutoToken: receiveMsg.AutoToken,
-		RoomId:    receiveMsg.RoomId,
+		Version:    int32(receiveMsg.Version),
+		Operate:    int32(consts.OPERATE_CONN_MSG),
+		Method:     receiveMsg.Method,
+		AuthToken:  receiveMsg.AuthToken,
+		RoomId:     receiveMsg.RoomId,
+		FromUserId: receiveMsg.FromUserId,
 	})
 	if err != nil {
 		result.Code, result.Msg = commons.GetCodeMessage(commons.RESPONSE_FAIL)
@@ -60,7 +64,12 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 
 // DisConnect
 // @Desc：断连处理业务逻辑
+// @param：version
+// @param：roomId
 // @param：userId
+// @return：code
+// @return：msg
+// @return：err
 func (cManage *DefaultClientManage) DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error) {
 	var (
 		result = &socket.Result{}
@@ -118,7 +127,7 @@ func (cManage *DefaultClientManage) PushBroadcast(receiveMsg types.ReceiveMsg, t
 		Version:      int32(receiveMsg.Version),
 		Operate:      int32(receiveMsg.Operate),
 		Method:       receiveMsg.Method,
-		AutoToken:    receiveMsg.AutoToken,
+		AuthToken:    receiveMsg.AuthToken,
 		RoomId:       receiveMsg.RoomId,
 		FromUserId:   receiveMsg.FromUserId,
 		FromUserName: receiveMsg.FromUserName,

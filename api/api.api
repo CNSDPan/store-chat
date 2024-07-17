@@ -19,6 +19,7 @@ type dataPageList {
 type request {
 	Version     string `json:"version" binding:"required"`
 	RequestTime int64  `json:"requestTime,string" binding:"required"`
+	Source      string `json:"source,omitempty"`
 }
 
 type reqLogin {
@@ -40,13 +41,13 @@ type reqList {
 type response {
 	Modult       string      `json:"modult"`
 	Code         string      `json:"code"`
-	Message      string      `json:"message"`
+	Message      string      `json:"msg"`
 	ResponseTime string      `json:"responseTime"`
 	Data         interface{} `json:"data"`
 }
 
 @server (
-	prefix: /v1
+	prefix: /api
 	group:  user
 )
 service api {
@@ -56,7 +57,7 @@ service api {
 }
 
 @server (
-	prefix:     /v1
+	prefix:     /api
 	group:      user
 	middleware: AutoToken
 )

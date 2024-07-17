@@ -11,7 +11,7 @@ import (
 type UserClient struct {
 	CLock       sync.RWMutex
 	SystemId    string
-	AutoToken   string
+	AuthToken   string
 	UserId      int64
 	UserName    string
 	BucketId    uint32
@@ -49,7 +49,7 @@ func NewClient(wsConn *websocket.Conn) *Client {
 func NewUserClient() *UserClient {
 	return &UserClient{
 		SystemId:    "",
-		AutoToken:   "",
+		AuthToken:   "",
 		UserId:      0,
 		UserName:    "",
 		BucketId:    0,

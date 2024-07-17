@@ -52,6 +52,24 @@ services:
     networks:
       store:
         ipv4_address: 172.20.2.198
+  http.api:
+    container_name: http.api
+    #使用别人的构造器
+    image: debian:latest
+    ports:
+      - "7000:8888"
+    environment:
+      - TZ=${TZ}
+      - LANG=${LANG}
+    volumes:
+      - ${APP_PATH}/api/bin/api.bin:${MOUNT_PATH}/api.bin
+      - ${APP_PATH}/api/etc:${MOUNT_PATH}/etc
+      - ${APP_PATH}/tmp/:${MOUNT_PATH}/tmp
+      - ${APP_PATH}/tools/:${MOUNT_PATH}/tools
+    command: /bin/bash -c "cd /var/www/store-chat&&./api.bin module api >> tmp/api.err"
+    networks:
+      store:
+        ipv4_address: 172.20.2.101
 networks:
   store:
     name: store

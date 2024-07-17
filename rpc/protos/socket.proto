@@ -27,7 +27,7 @@ message ReqBroadcastMsg{
   int32 version = 1;
   int32 operate = 2;
   string method = 3;
-  string autoToken = 4;
+  string authToken = 4;
   int64  roomId = 5;
   int64  fromUserId = 6;
   string fromUserName = 7;

@@ -29,12 +29,13 @@ type ReqOut struct {
 type Request struct {
 	Version     string `json:"version" binding:"required"`
 	RequestTime int64  `json:"requestTime,string" binding:"required"`
+	Source      string `json:"source,omitempty"`
 }
 
 type Response struct {
 	Modult       string      `json:"modult"`
 	Code         string      `json:"code"`
-	Message      string      `json:"message"`
+	Message      string      `json:"msg"`
 	ResponseTime string      `json:"responseTime"`
 	Data         interface{} `json:"data"`
 }

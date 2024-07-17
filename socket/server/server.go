@@ -193,14 +193,16 @@ func (s *Server) readChannel(client *Client) {
 			_ = client.WsConn.SetReadDeadline(time.Now().Add(PongPeriod))
 			return nil
 		})
-		if receiveMsg.Version == 0 || receiveMsg.Operate == 0 || receiveMsg.AutoToken == "" || receiveMsg.RoomId == 0 {
+		if receiveMsg.Version == 0 || receiveMsg.Operate == 0 || receiveMsg.RoomId == 0 || receiveMsg.AuthToken == "" || receiveMsg.FromUserId == 0 {
 			s.Log.Errorf("%s 消息缺失必要条件 msg:%+v", s.ServerName, receiveMsg)
-			continue
+			return
 		}
 		roomId = receiveMsg.RoomId
 		receiveMsg.FromClientId = client.ClientId
-		receiveMsg.FromUserId = userClient.UserId
 		receiveMsg.FromUserName = userClient.UserName
+		if userClient.UserId > 0 {
+			receiveMsg.FromUserId = userClient.UserId
+		}
 		switch receiveMsg.Operate {
 		case consts.OPERATE_SINGLE_MSG:
 			if sendMsg, ok = receiveMsg.Event.Params.(string); !ok {
@@ -232,7 +234,7 @@ func (s *Server) readChannel(client *Client) {
 				bucket := s.GetBucket(client.UserId)
 				userClient = bucket.GetUserClient(client.UserId, userClient.UserName)
 				userClient.SystemId = s.ServerIp
-				userClient.AutoToken = receiveMsg.AutoToken
+				userClient.AuthToken = receiveMsg.AuthToken
 				bucket.AddBucket(roomId, client, userClient)
 				s.Log.Infof("池子的用户的连接数：%d", len(userClient.RoomClients))
 				// 给当前连接者client信息
@@ -249,6 +251,8 @@ func (s *Server) readChannel(client *Client) {
 				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, fmt.Sprintf("%s 进来了", userClient.UserName)); err != nil {
 					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
+			} else {
+				return
 			}
 		}
 	}

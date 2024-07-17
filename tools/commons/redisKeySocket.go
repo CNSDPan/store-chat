@@ -11,7 +11,7 @@ const (
 
 const (
 	// client的用户key，分布式下用于校验是否已经连接了
-	CHAT_KEY = "chat_"
+	SOCKET_CHAT_KEY = "socket:chat:"
 	// client的用户key的有效时长，务必比pong长
-	CHAT_KEY_EXPIRE_SECOND = 60
+	SOCKET_CHAT_KEY_EXPIRE_SECOND = 60
 )

@@ -17,6 +17,12 @@ func NewAutoTokenMiddleware() *AutoTokenMiddleware {
 
 func (m *AutoTokenMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		commons.SetHeader(w)
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		result := types.NewResponseJson()
 		autoToken := r.Header.Get("autoToken")
 		// API接口没有使用rpc做业务处理，有需要自行更改

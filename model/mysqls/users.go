@@ -10,11 +10,18 @@ const (
 	USER_STATUS_0 int8 = 0
 	USER_STATUS_1 int8 = 1
 	USER_STATUS_2 int8 = 2
+
+	WS_CONN_LEAVE   int8 = 1
+	WS_CONN_ON_LINE int8 = 2
 )
 
 var StatusName = map[int8]string{
 	USER_STATUS_1: "启用",
 	USER_STATUS_2: "禁用",
+}
+var WsConnName = map[int8]string{
+	WS_CONN_LEAVE:   "离开",
+	WS_CONN_ON_LINE: "在线",
 }
 
 type Users struct {
@@ -30,13 +37,16 @@ type Users struct {
 
 type UserApi struct {
 	ID        uint32 `gorm:"primaryKey;column:id" json:"-"`
-	UserID    int64  `gorm:"column:user_id" json:"userId,string"`       // 用户IID
-	Token     string `gorm:"column:token" json:"token,string"`          // token
-	Status    int8   `gorm:"column:status" json:"status,string"`        // 1=启用 2=禁用
-	Name      string `gorm:"column:name" json:"name,string"`            // 昵称
-	Fund      int64  `gorm:"column:fund" json:"fund,string"`            // 用户资金,入库*1000【1000 = 1元】
-	CreatedAt string `gorm:"column:created_at" json:"createdAt,string"` // 创建时间
-	UpdatedAt string `gorm:"column:updated_at" json:"updatedAt,string"` // 更新时间
+	UserID    int64  `gorm:"column:user_id" json:"userId,string"` // 用户IID
+	Token     string `gorm:"column:token" json:"token"`           // token
+	Status    int8   `gorm:"column:status" json:"status,string"`  // 1=启用 2=禁用
+	Name      string `gorm:"column:name" json:"name"`             // 昵称
+	Fund      int64  `gorm:"column:fund" json:"fund,string"`      // 用户资金,入库*1000【1000 = 1元】
+	CreatedAt string `gorm:"column:created_at" json:"createdAt"`  // 创建时间
+	UpdatedAt string `gorm:"column:updated_at" json:"updatedAt"`  // 更新时间
+	// 虚拟字段
+	WsConn        int8   `gorm:"-" json:"wsConn,string"` // websocket是否在线；1-在线、2-不在线
+	Authorization string `gorm:"-" json:"authorization"` // Authorization;生成的token
 }
 
 type UsersMgr struct {
@@ -81,7 +91,7 @@ func (obj *UsersMgr) SelectPage(page IPage, opts ...Option) (resultPage IPage, e
 		o.apply(&options)
 	}
 	resultPage = page
-	results := make([]Users, 0)
+	results := make([]UserApi, 0)
 	var count int64 // 统计总的记录数
 	query := obj.DB.WithContext(obj.ctx).Model(Users{}).Where(options.query)
 	query.Count(&count)
