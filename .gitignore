@@ -1,1 +1,4 @@
 /tmp/*.err
+/api/bin/*
+/rpc/socket/bin/*
+/socket/bin/*

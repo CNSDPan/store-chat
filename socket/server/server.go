@@ -1,11 +1,13 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/jsonx"
 	"github.com/zeromicro/go-zero/core/logx"
+	"store-chat/dbs"
 	"store-chat/tools/commons"
 	"store-chat/tools/consts"
 	"store-chat/tools/tools"
@@ -68,9 +70,6 @@ func (s *Server) writeChannel(client *Client) {
 			client = nil
 			return
 		}
-		//if _, _, err := s.ClientManage.DisConnect(int32(1), client.RoomId, userClient.UserId); err != nil {
-		//	s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
-		//}
 		// 移除连接池
 		s.GetBucket(client.UserId).UnBucket(client)
 		_ = client.WsConn.Close()
@@ -136,6 +135,10 @@ func (s *Server) writeChannel(client *Client) {
 				s.Log.Errorf("%s WriteMessage fail:%s", s.ServerName, err.Error())
 				return
 			}
+			// 更新过期时间
+			if userClient.UserId > 0 {
+				dbs.RedisClient.SetXX(context.Background(), commons.SOCKET_CHAT_KEY+strconv.FormatInt(userClient.UserId, 10), s.ServerIp+"_"+userClient.AuthToken, time.Duration(commons.SOCKET_CHAT_KEY_EXPIRE_SECOND)*time.Second)
+			}
 		}
 	}
 }
@@ -163,12 +166,11 @@ func (s *Server) readChannel(client *Client) {
 			client = nil
 			return
 		}
-		// 移除业务,重复进入房间不移除原有缓存
-		//if _, _, err := s.ClientManage.DisConnect(int32(receiveMsg.Version), roomId, userClient.UserId); err != nil {
-		//	s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
-		//}
-		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, userClient.UserName+" 离开了"); err != nil {
+		if _, _, err := s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, userClient.UserId, userClient.UserName, userClient.UserName+" 离开了"); err != nil {
 			s.Log.Errorf("%s 移除client推送离开信息;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
+		}
+		if _, _, err := s.ClientManage.DisConnect(receiveMsg, userClient.UserId, userClient.UserName, userClient.AuthToken); err != nil {
+			s.Log.Errorf("%s 移除client处理业务;userId:%d;ERR:%s", s.ServerName, client.UserId, err.Error())
 		}
 		// 移除连接池
 		s.GetBucket(client.UserId).UnBucket(client)
@@ -214,14 +216,14 @@ func (s *Server) readChannel(client *Client) {
 					receiveMsg.ToClientId = toClient.ClientId
 					receiveMsg.ToUserId = toUserClient.UserId
 					receiveMsg.ToUserName = toUserClient.UserName
-					if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, toUserClient.UserId, toUserClient.UserName, sendMsg); err != nil {
+					if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, toUserClient.UserId, toUserClient.UserName, sendMsg); err != nil {
 						s.Log.Errorf("%s %s 私聊 %s：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, toUserClient.UserName, code, msg, err.Error())
 					}
 				}
 			}
 		case consts.OPERATE_GROUP_MSG:
 			if sendMsg, ok = receiveMsg.Event.Params.(string); ok {
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, 0, "", sendMsg); err != nil {
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, 0, "", sendMsg); err != nil {
 					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			}
@@ -236,23 +238,29 @@ func (s *Server) readChannel(client *Client) {
 				userClient.SystemId = s.ServerIp
 				userClient.AuthToken = receiveMsg.AuthToken
 				bucket.AddBucket(roomId, client, userClient)
-				s.Log.Infof("池子的用户的连接数：%d", len(userClient.RoomClients))
+				s.Log.Infof("IP:%s 池子的用户的连接数：%d", s.ServerIp, len(userClient.RoomClients))
+				// 存储用户socket连接在哪个服务id,同一个账号每次连接都可能会处于不同的服务中
+				chatKey := fmt.Sprintf("%s_%d;%s", s.ServerId, userClient.BucketId, userClient.AuthToken)
+				if err = dbs.RedisClient.SetNX(context.Background(), commons.SOCKET_CHAT_KEY+strconv.FormatInt(userClient.UserId, 10), chatKey, time.Duration(commons.SOCKET_CHAT_KEY_EXPIRE_SECOND)*time.Second).Err(); err != nil {
+					s.Log.Errorf("%s 设置用户socket:chat:key fail:%v", s.ServerName, err)
+					return
+				}
 				// 给当前连接者client信息
 				receiveMsg.Operate = consts.OPERATE_SINGLE_MSG
 				receiveMsg.Method = consts.METHOD_ENTER_MSG
 				receiveMsg.FromUserId = userClient.UserId
 				receiveMsg.FromUserName = userClient.UserName
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, ""); err != nil {
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, userClient.UserId, userClient.UserName, ""); err != nil {
 					s.Log.Errorf("%s %s 返回私人消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 				// 广播群聊通知有人进来了
 				receiveMsg.Operate = consts.OPERATE_GROUP_MSG
 				receiveMsg.Method = consts.METHOD_NORMAL_MSG
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.UserId, userClient.UserName, fmt.Sprintf("%s 进来了", userClient.UserName)); err != nil {
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, userClient.UserId, userClient.UserName, fmt.Sprintf("%s;连接池:%d;%s 进来了", s.ServerIp, bucket.Idx, userClient.UserName)); err != nil {
 					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			} else {
-				return
+				s.Log.Errorf("%s 非正常code:%s;msg:%s", s.ServerName, code, msg)
 			}
 		}
 	}

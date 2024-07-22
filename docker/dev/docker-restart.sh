@@ -3,4 +3,5 @@ docker exec go-store-chat /bin/bash -c "sh /var/www/store-chat/docker/build/dev-
 #重启容器
 docker restart rpc.socket
 docker restart websocket1
+docker restart websocket2
 docker restart http.api

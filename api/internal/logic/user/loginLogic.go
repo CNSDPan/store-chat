@@ -42,7 +42,7 @@ func (l *LoginLogic) Login(req *types.ReqLogin) (resp *types.Response, err error
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_INFO_FAIL)
 		return
 	}
-	if user.Authorization, err = dbs.RedisClient.Get(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10)).Result(); err != nil && err != redis.Nil {
+	if user.Authorization, err = dbs.RedisClient.Get(l.ctx, commons.USER_AUTHORIZATION_KEY+strconv.FormatInt(user.UserID, 10)).Result(); err != nil && err != redis.Nil {
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_GET)
 		return
 	} else if user.Authorization != "" && req.Source != "goTest" {
@@ -62,7 +62,7 @@ func (l *LoginLogic) Login(req *types.ReqLogin) (resp *types.Response, err error
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_CREATE)
 		return
 	}
-	if err = dbs.RedisClient.SetNX(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10), user.Authorization, time.Duration(l.svcCtx.Config.AccessExpire)*time.Second).Err(); err != nil {
+	if err = dbs.RedisClient.SetNX(l.ctx, commons.USER_AUTHORIZATION_KEY+strconv.FormatInt(user.UserID, 10), user.Authorization, time.Duration(l.svcCtx.Config.AccessExpire)*time.Second).Err(); err != nil {
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_TOKEN_CREATE)
 		return
 	}

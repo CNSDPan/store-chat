@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"github.com/bwmarrin/snowflake"
 	"github.com/zeromicro/go-zero/core/logx"
-	"os"
 	"store-chat/dbs"
 	"store-chat/socket/mq"
 	"store-chat/socket/rpc"
 	"store-chat/socket/server"
+	"store-chat/tools/tools"
 	"strconv"
 
 	"store-chat/socket/internal/config"
@@ -44,7 +44,7 @@ func main() {
 		cont     = context.Background()
 	)
 	l = logx.WithContext(cont)
-	if serverIp, err = os.Hostname(); err != nil {
+	if serverIp, err = tools.GetServerIP(); err != nil {
 		panic(Module + " 获取服务信息 fail:" + err.Error())
 	}
 	// 服务uuid节点池
@@ -64,6 +64,8 @@ func main() {
 	if subReceive, err := mq.NewSubscribe(); err != nil {
 		panic(Module + " mq.NewSubscribe init fail:" + err.Error())
 	} else {
+		subReceive.ServerIp = serverIp
+		subReceive.Log = l
 		subReceive.SubReceive()
 	}
 	// 初始化websocket服务

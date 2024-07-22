@@ -8,10 +8,10 @@ type ReceiveMsg struct {
 	AuthToken    string `json:"authToken"`           // token
 	RoomId       int64  `json:"roomId,string"`       // 房间
 	FromClientId int64  `json:"fromClientId,string"` // 消息发送人client
-	FromUserId   int64  `json:"fromUserId"`          // 消息发送人ID
+	FromUserId   int64  `json:"fromUserId,string"`   // 消息发送人ID
 	FromUserName string `json:"fromUserName"`        // 发送人client
 	ToClientId   int64  `json:"toClientId,string"`   // 消息发送指定人
-	ToUserId     int64  `json:"toUserId"`            // 消息接收人
+	ToUserId     int64  `json:"toUserId,string"`     // 消息接收人
 	ToUserName   string `json:"toUserName"`          // 指定人
 	Event        Event  `json:"event"`               // 请求&响应参数
 }

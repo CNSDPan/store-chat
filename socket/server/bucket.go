@@ -109,6 +109,7 @@ func (b *Bucket) RoutineWriteMsg() {
 					}
 				}
 			} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
+				DefaultServer.Log.Errorf("rid:%d;len:", writeMsg.RoomId)
 				if room, ok := b.RoomMap[writeMsg.RoomId]; ok {
 					for _, client := range room.Clients {
 						client.Broadcast <- writeMsg

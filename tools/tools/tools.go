@@ -2,7 +2,9 @@ package tools
 
 import (
 	"crypto/rand"
+	"fmt"
 	"github.com/golang-jwt/jwt/v5"
+	"net"
 )
 
 // JWTCreateAuthorizationBy32
@@ -21,4 +23,19 @@ func JWTCreateAuthorizationBy32(mapClaims jwt.MapClaims) (string, error) {
 		return "", err
 	}
 	return jwtStr, nil
+}
+
+// GetServerIP
+// @Desc：获取服务IP
+// @return：*net.UDPAddr
+// @return：error
+func GetServerIP() (string, error) {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	defer conn.Close()
+	if err != nil {
+		return "", err
+	}
+	ipAddress := conn.LocalAddr().(*net.UDPAddr)
+	ip := fmt.Sprintf("%s", ipAddress.IP.String())
+	return ip, nil
 }

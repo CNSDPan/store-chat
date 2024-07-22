@@ -17,12 +17,13 @@ var codeMessage = map[string]string{
 	RESPONSE_SIGN_FAIL:         "无效sign",
 
 	/***************************************/
+	USER_LOGINED:      "用户已登录",
 	USER_INFO_FAIL:    "用户信息不存在",
 	USER_ID_FAIL:      "用户ID不存在|错误",
 	USER_TOKEN_FAIL:   "用户Token不存在|错误",
 	USER_TOKEN_CREATE: "用户Token创建错误",
 	USER_TOKEN_GET:    "用户Token获取错误",
-	USER_LOGINED:      "用户已登录",
+	USER_TOKEN_DEL:    "用户Token删除错误",
 
 	/***************************************/
 	SOCKET_BROADCAST_LOGINED:       "socket已连接",

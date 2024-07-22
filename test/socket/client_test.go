@@ -2,6 +2,7 @@ package socket
 
 import (
 	"fmt"
+	"store-chat/dbs"
 	"store-chat/model/mysqls"
 	"store-chat/tools/consts"
 	"store-chat/tools/tools"
@@ -12,11 +13,17 @@ import (
 )
 
 const (
-	socketUrl = "ws://192.168.33.10:6991/ws"
+	//socketUrl = "ws://192.168.33.10:6991/ws"
+	//socketUrl = "ws://192.168.33.10:6992/ws"
+	socketUrl = "ws://websocket.cn:6990/ws"
+
 	//socketUrl = "ws://roha:8888/ws"
 )
 
-var TClient *TestClient
+func init() {
+	_, _ = dbs.NewRedisClient()
+}
+
 var user = new(DefaultUser)
 
 var store = tools.StoreMap
@@ -61,7 +68,7 @@ func TestUser2Room1(t *testing.T) {
 	go func() {
 		Read()
 	}()
-	SendQA()
+	//SendQA()
 	select {
 	case isClose := <-user.IsClose:
 		if isClose == 1 {
@@ -107,7 +114,7 @@ func Read() {
 					}
 					roomIdStr, _ = data["roomId"].(string)
 					userIdStr = data["fromUserId"].(string)
-					if user.UserName == "蟑螂恶霸" && data["message"].(string) == "我是谁" {
+					if user.UserName == "蟑螂恶霸" {
 						roomId, _ = strconv.ParseInt(roomIdStr, 10, 64)
 						fromUserId, _ = strconv.ParseInt(userIdStr, 10, 64)
 						user.Client.QAChan <- QA{
@@ -132,7 +139,8 @@ func Send(operate int, roomId int64, toUserId int64, msg string, after time.Dura
 		Method:       consts.METHOD_NORMAL_MSG,
 		AuthToken:    autoToken,
 		RoomId:       roomId,
-		FromClientId: TClient.ClientId,
+		FromUserId:   user.UserId,
+		FromClientId: user.Client.ClientId,
 		ToUserId:     toUserId,
 		Event:        types.Event{},
 	}
@@ -146,20 +154,38 @@ func Send(operate int, roomId int64, toUserId int64, msg string, after time.Dura
 			select {
 			case <-time.After(after):
 				sendIndex++
-				send.Event.Params = user.UserName + ":" + msg
-				TClient.SendMsgChan <- send
+				send.Event.Params = "自动回复:" + msg
+				user.Client.SendMsgChan <- send
 			}
 		}
 	}()
 }
 
 func SendQA() {
+	var (
+		now        time.Time
+		weekday    time.Weekday
+		sendMsg    = ""
+		week       string
+		weekdayStr = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
+	)
 	go func() {
 		for {
 			select {
 			case msg := <-user.Client.QAChan:
-				Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, "你是 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
-				Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "再偷偷私信你~你叫 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
+				switch msg.message {
+				case "我是谁":
+					sendMsg = "你是 " + msg.fromUserName
+					Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, sendMsg, 0*time.Second, 1, user.AuthToken)
+					//time.Sleep(500 * time.Millisecond)
+					//Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "再偷偷私信你~你叫 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
+				case "当前时间":
+					now = time.Now()
+					weekday = now.Weekday()
+					week = weekdayStr[weekday]
+					sendMsg = fmt.Sprintf("私信---今天是%s %s", now.Format("2006-01-02 15:04:05"), week)
+					Send(consts.OPERATE_GROUP_MSG, msg.roomId, msg.fromUserId, sendMsg, 0*time.Second, 1, user.AuthToken)
+				}
 			}
 		}
 	}()

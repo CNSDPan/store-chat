@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"fmt"
 	"google.golang.org/protobuf/types/known/anypb"
 	"store-chat/rpc/socket/pb/socket"
 	"store-chat/socket/rpc"
@@ -17,14 +18,15 @@ type ClientManage interface {
 	// InitConnect 交给业务层校验authToken和处理业务
 	InitConnect(receiveMsg types.ReceiveMsg) (code string, msg string, err error, userId int64, userName string)
 	// DisConnect 断连交给业务层处理其他业务
-	DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error)
+	DisConnect(receiveMsg types.ReceiveMsg, userId int64, userName string, authToken string) (code string, msg string, err error)
 	// PushSingle 私聊发布交给业务层处理
-	PushBroadcast(receiveMsg types.ReceiveMsg, toUserId int64, toUserName string, sendMsg string) (code string, msg string, err error)
+	PushBroadcast(receiveMsg types.ReceiveMsg, systemId string, bucketId uint32, toUserId int64, toUserName string, sendMsg string) (code string, msg string, err error)
 }
 
 // InitConnect
 // @Desc：连接处理业务逻辑
 // @param：receiveMsg
+// @param：serverIp
 // @return：code
 // @return：msg
 // @return：err
@@ -39,6 +41,7 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 		code = result.Code
 		msg = result.Msg
 	}()
+
 	result, err = rpc.GrpcSocket.Broadcast.BroadcastLogin(context.Background(), &socket.ReqBroadcastMsg{
 		Version:    int32(receiveMsg.Version),
 		Operate:    int32(consts.OPERATE_CONN_MSG),
@@ -70,7 +73,7 @@ func (cManage *DefaultClientManage) InitConnect(receiveMsg types.ReceiveMsg) (co
 // @return：code
 // @return：msg
 // @return：err
-func (cManage *DefaultClientManage) DisConnect(version int32, roomId int64, userId int64) (code string, msg string, err error) {
+func (cManage *DefaultClientManage) DisConnect(receiveMsg types.ReceiveMsg, userId int64, userName string, authToken string) (code string, msg string, err error) {
 	var (
 		result = &socket.Result{}
 	)
@@ -79,9 +82,13 @@ func (cManage *DefaultClientManage) DisConnect(version int32, roomId int64, user
 		msg = result.Msg
 	}()
 	result, err = rpc.GrpcSocket.Broadcast.BroadcastOut(context.Background(), &socket.ReqBroadcastMsg{
-		Version:    version,
-		RoomId:     roomId,
-		FromUserId: userId,
+		Version:      int32(receiveMsg.Version),
+		Operate:      int32(receiveMsg.Operate),
+		Method:       consts.METHOD_OUT_MSG,
+		AuthToken:    authToken,
+		RoomId:       receiveMsg.RoomId,
+		FromUserId:   userId,
+		FromUserName: userName,
 	})
 	if err != nil {
 		result.Code, result.Msg = commons.GetCodeMessage(commons.RESPONSE_FAIL)
@@ -99,7 +106,7 @@ func (cManage *DefaultClientManage) DisConnect(version int32, roomId int64, user
 // @return：code
 // @return：msg
 // @return：err
-func (cManage *DefaultClientManage) PushBroadcast(receiveMsg types.ReceiveMsg, toUserId int64, toUserName string, sendMsg string) (code string, msg string, err error) {
+func (cManage *DefaultClientManage) PushBroadcast(receiveMsg types.ReceiveMsg, systemId string, bucketId uint32, toUserId int64, toUserName string, sendMsg string) (code string, msg string, err error) {
 	var (
 		result = &socket.Result{}
 		params *anypb.Any
@@ -113,6 +120,14 @@ func (cManage *DefaultClientManage) PushBroadcast(receiveMsg types.ReceiveMsg, t
 			UserName: receiveMsg.FromUserName,
 		})
 	case consts.METHOD_NORMAL_MSG:
+		params, err = anypb.New(&socket.EventParamsNormal{
+			Message: sendMsg,
+		})
+	case consts.METHOD_SERVER_MSG:
+		sendMsg = fmt.Sprintf("服务IP:%s、连接池：%d", systemId, bucketId)
+		receiveMsg.Method = consts.METHOD_NORMAL_MSG
+		receiveMsg.FromUserId = 1
+		receiveMsg.FromUserName = "系统"
 		params, err = anypb.New(&socket.EventParamsNormal{
 			Message: sendMsg,
 		})

@@ -52,6 +52,24 @@ services:
     networks:
       store:
         ipv4_address: 172.20.2.198
+  websocket2:
+    container_name: websocket2
+    #使用别人的构造器
+    image: debian:latest
+    ports:
+      - "6992:8888"
+    environment:
+      - TZ=${TZ}
+      - LANG=${LANG}
+    volumes:
+      - ${APP_PATH}/socket/bin/socket.bin:${MOUNT_PATH}/socket.bin
+      - ${APP_PATH}/socket/etc:${MOUNT_PATH}/etc
+      - ${APP_PATH}/tmp/:${MOUNT_PATH}/tmp
+      - ${APP_PATH}/tools/:${MOUNT_PATH}/tools
+    command: /bin/bash -c "cd /var/www/store-chat&&./socket.bin module socket >> tmp/socket2.err"
+    networks:
+      store:
+        ipv4_address: 172.20.2.199
   http.api:
     container_name: http.api
     #使用别人的构造器

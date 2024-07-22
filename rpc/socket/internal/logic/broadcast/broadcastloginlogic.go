@@ -69,7 +69,7 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 	//	goto resultHan
 	//}
 
-	chatKey, err = dbs.RedisClient.Get(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10)).Result()
+	chatKey, err = dbs.RedisClient.Get(l.ctx, commons.USER_AUTHORIZATION_KEY+strconv.FormatInt(user.UserID, 10)).Result()
 	if (err == nil && chatKey != in.AuthToken) || err == redis.Nil {
 		l.Logger.Errorf("%s 用户token不匹配", result.Module)
 		result.Code = commons.USER_TOKEN_FAIL
@@ -79,7 +79,6 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 		result.Code = commons.USER_TOKEN_GET
 		return result, rpcErr
 	}
-
 	// any类型反射
 	resultData.RoomId = in.RoomId
 	resultData.UserId = user.UserID

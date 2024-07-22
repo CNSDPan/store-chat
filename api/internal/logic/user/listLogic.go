@@ -44,7 +44,7 @@ func (l *ListLogic) List(req *types.ReqList) (resp *types.Response, err error) {
 	}
 	rows := make([]mysqls.UserApi, 0)
 	for _, user := range userPage.GetRecords().([]mysqls.UserApi) {
-		if err = dbs.RedisClient.Get(l.ctx, commons.SOCKET_CHAT_KEY+strconv.FormatInt(user.UserID, 10)).Err(); err == nil {
+		if err = dbs.RedisClient.Get(l.ctx, commons.USER_AUTHORIZATION_KEY+strconv.FormatInt(user.UserID, 10)).Err(); err == nil {
 			user.WsConn = mysqls.WS_CONN_ON_LINE
 		} else if err == redis.Nil {
 			user.WsConn = mysqls.WS_CONN_LEAVE
