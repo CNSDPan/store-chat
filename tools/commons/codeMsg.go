@@ -50,11 +50,14 @@ func GetCodeMessage(code string) (string, string) {
 		codeMsg map[string]string
 		message string
 		ok      bool
+		c       string
 	)
 	codeMsg = ReturnOverCodeMessage()
 	if message, ok = codeMsg[code]; !ok {
 		message = fmt.Sprintf("code: %s ,%s", code, codeMessage[RESPONSE_NOT_CODE])
-		code = RESPONSE_NOT_CODE
+		c = RESPONSE_NOT_CODE
+	} else {
+		c = code
 	}
-	return code, message
+	return c, message
 }

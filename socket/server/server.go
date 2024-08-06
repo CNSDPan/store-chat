@@ -238,7 +238,8 @@ func (s *Server) readChannel(client *Client) {
 				userClient.SystemId = s.ServerIp
 				userClient.AuthToken = receiveMsg.AuthToken
 				bucket.AddBucket(roomId, client, userClient)
-				s.Log.Infof("IP:%s 池子的用户的连接数：%d", s.ServerIp, len(userClient.RoomClients))
+				//s.Log.Errorf("进入房间;IP【%s】池子【%d】房间【%s】用户【%s】", s.ServerIp, bucket.Idx, tools.StoreMap[client.RoomId].Name, userClient.UserName)
+				s.Log.Errorf("池子【%d】池子房间数【%d】该房间连接数【%d】该用户连接数【%d】房间【%s】", bucket.Idx, len(bucket.RoomMap), len(bucket.RoomMap[client.RoomId].Clients), len(userClient.RoomClients), tools.StoreMap[client.RoomId].Name)
 				// 存储用户socket连接在哪个服务id,同一个账号每次连接都可能会处于不同的服务中
 				chatKey := fmt.Sprintf("%s_%d;%s", s.ServerId, userClient.BucketId, userClient.AuthToken)
 				if err = dbs.RedisClient.SetNX(context.Background(), commons.SOCKET_CHAT_KEY+strconv.FormatInt(userClient.UserId, 10), chatKey, time.Duration(commons.SOCKET_CHAT_KEY_EXPIRE_SECOND)*time.Second).Err(); err != nil {
@@ -256,7 +257,7 @@ func (s *Server) readChannel(client *Client) {
 				// 广播群聊通知有人进来了
 				receiveMsg.Operate = consts.OPERATE_GROUP_MSG
 				receiveMsg.Method = consts.METHOD_NORMAL_MSG
-				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, userClient.UserId, userClient.UserName, fmt.Sprintf("%s;连接池:%d;%s 进来了", s.ServerIp, bucket.Idx, userClient.UserName)); err != nil {
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, userClient.UserId, userClient.UserName, fmt.Sprintf("%s;连接池:%d;%s 进入了 %s", s.ServerIp, bucket.Idx, userClient.UserName, tools.StoreMap[roomId].Name)); err != nil {
 					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			} else {

@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"store-chat/tools/consts"
+	"store-chat/tools/tools"
 	"store-chat/tools/types"
 	"sync"
 )
@@ -33,7 +34,7 @@ func NewBucket(cpu uint) []*Bucket {
 			Routines:      make(chan types.WriteMsg, 1000),
 			Idx:           uint32(i),
 		}
-		go buckets[i].RoutineWriteMsg()
+		buckets[i].RoutineWriteMsg()
 	}
 	return buckets
 }
@@ -70,7 +71,6 @@ func (b *Bucket) AddBucket(roomId int64, client *Client, userClient *UserClient)
 		b.RoomMap[roomId].RoomId = roomId
 		b.RoomMap[roomId].Clients = append(b.RoomMap[roomId].Clients, client)
 	}
-	fmt.Printf("room.Clients:%+v \n", len(b.RoomMap[roomId].Clients))
 }
 
 // UnBucket 将客户端移除连接池
@@ -99,23 +99,29 @@ func (b *Bucket) UnBucket(client *Client) {
 // RoutineWriteMsg
 // @Desc：每个池子有单独接收订阅者传输过来的数据并处理的协程
 func (b *Bucket) RoutineWriteMsg() {
-	for {
-		select {
-		case writeMsg := <-b.Routines:
-			if writeMsg.Operate == consts.OPERATE_SINGLE_MSG {
-				if userClient := b.GetUserClient(writeMsg.ToUserId, ""); userClient != nil {
-					if client := userClient.GetClient(writeMsg.RoomId); client != nil {
-						client.Broadcast <- writeMsg
+	go func() {
+		for {
+			select {
+			case writeMsg := <-b.Routines:
+				if writeMsg.Operate == consts.OPERATE_SINGLE_MSG {
+					if userClient := b.GetUserClient(writeMsg.ToUserId, ""); userClient != nil {
+						if client := userClient.GetClient(writeMsg.RoomId); client != nil {
+							go func() {
+								client.Broadcast <- writeMsg
+							}()
+						}
+					}
+				} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
+					if room, ok := b.RoomMap[writeMsg.RoomId]; ok {
+						go func() {
+							for _, client := range room.Clients {
+								client.Broadcast <- writeMsg
+							}
+						}()
 					}
 				}
-			} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
-				DefaultServer.Log.Errorf("rid:%d;len:", writeMsg.RoomId)
-				if room, ok := b.RoomMap[writeMsg.RoomId]; ok {
-					for _, client := range room.Clients {
-						client.Broadcast <- writeMsg
-					}
-				}
+				DefaultServer.Log.Errorf("idx【%d】循环【%d:%s】chan【%d】", b.Idx, writeMsg.RoomId, tools.StoreMap[writeMsg.RoomId].Name, len(b.Routines))
 			}
 		}
-	}
+	}()
 }

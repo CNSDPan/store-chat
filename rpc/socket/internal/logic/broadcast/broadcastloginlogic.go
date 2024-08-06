@@ -10,6 +10,7 @@ import (
 	"store-chat/rpc/socket/internal/svc"
 	"store-chat/rpc/socket/pb/socket"
 	"store-chat/tools/commons"
+	"store-chat/tools/tools"
 	"strconv"
 )
 
@@ -48,7 +49,7 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 		result.Code, result.Msg = commons.GetCodeMessage(result.Code)
 		if err != nil && err != redis.Nil {
 			result.ErrMsg = err.Error()
-			l.Logger.Errorf("%s Broadcast ope:%d fail:%s", result.Module, in.Operate, err.Error())
+			l.Logger.Errorf("%s op:%d fail:%s", result.Module, in.Operate, err.Error())
 		}
 	}()
 	if user, err = mysqls.NewUserMgr().GetUser(mysqls.Users{UserID: in.FromUserId}); err != nil {
@@ -71,7 +72,7 @@ func (l *BroadcastLoginLogic) BroadcastLogin(in *socket.ReqBroadcastMsg) (result
 
 	chatKey, err = dbs.RedisClient.Get(l.ctx, commons.USER_AUTHORIZATION_KEY+strconv.FormatInt(user.UserID, 10)).Result()
 	if (err == nil && chatKey != in.AuthToken) || err == redis.Nil {
-		l.Logger.Errorf("%s 用户token不匹配", result.Module)
+		l.Logger.Errorf("%s 【%s】用户token不匹配【%s】【%s】【%s】", result.Module, user.Name, in.AuthToken, chatKey, tools.StoreMap[in.RoomId].Name)
 		result.Code = commons.USER_TOKEN_FAIL
 		return result, rpcErr
 	} else if err != nil {

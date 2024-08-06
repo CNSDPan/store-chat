@@ -1,5 +1,6 @@
 Name: "socket.rpc"
 ServerName: "socket.rpc服务:"
+# socket.rpc的服务端口地址
 ListenOn: 0.0.0.0:8080
 Etcd:
   Hosts:
