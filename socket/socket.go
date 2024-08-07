@@ -76,5 +76,6 @@ func main() {
 	handler.RegisterHandlers(s, ctx, socket)
 
 	fmt.Printf("%s Starting server at %s:%d...\n", Module, serverIp, c.Port)
+
 	s.Start()
 }

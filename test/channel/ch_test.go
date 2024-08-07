@@ -60,9 +60,12 @@ func (b *Bucket) BCh() {
 		for {
 			select {
 			case s := <-b.ch:
-				for _, l := range b.l {
-					l.ch <- s
-				}
+				go func() {
+					for _, l := range b.l {
+						l.ch <- s
+					}
+				}()
+
 			}
 		}
 	}()

@@ -38,6 +38,7 @@ func (l *LoginLogic) Login(req *types.ReqLogin) (resp *types.Response, err error
 		l.Logger.Errorf("%s 查询失败：%s", l.svcCtx.Config.ServerName, e.Error())
 		return
 	}
+	l.Logger.Errorf("%#v req.AutoToken:%s", user, req.AutoToken)
 	if user.UserID == 0 {
 		resp.Code, resp.Message = commons.GetCodeMessage(commons.USER_INFO_FAIL)
 		return

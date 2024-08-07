@@ -104,3 +104,11 @@ func (uClient *UserClient) CheckSystemId(systemId string) bool {
 		return false
 	}
 }
+
+func (client *Client) Push(writeMsg types.WriteMsg) (err error) {
+	select {
+	case client.Broadcast <- writeMsg:
+	default:
+	}
+	return
+}

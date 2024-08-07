@@ -96,6 +96,14 @@ func (b *Bucket) UnBucket(client *Client) {
 	}
 }
 
+func (b *Bucket) BroadcastRoom(writeMsg types.WriteMsg) (err error) {
+	select {
+	case b.Routines <- writeMsg:
+	default:
+	}
+	return
+}
+
 // RoutineWriteMsg
 // @Desc：每个池子有单独接收订阅者传输过来的数据并处理的协程
 func (b *Bucket) RoutineWriteMsg() {
@@ -106,18 +114,14 @@ func (b *Bucket) RoutineWriteMsg() {
 				if writeMsg.Operate == consts.OPERATE_SINGLE_MSG {
 					if userClient := b.GetUserClient(writeMsg.ToUserId, ""); userClient != nil {
 						if client := userClient.GetClient(writeMsg.RoomId); client != nil {
-							go func() {
-								client.Broadcast <- writeMsg
-							}()
+							_ = client.Push(writeMsg)
 						}
 					}
 				} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
 					if room, ok := b.RoomMap[writeMsg.RoomId]; ok {
-						go func() {
-							for _, client := range room.Clients {
-								client.Broadcast <- writeMsg
-							}
-						}()
+						for _, client := range room.Clients {
+							_ = client.Push(writeMsg)
+						}
 					}
 				}
 				DefaultServer.Log.Errorf("idx【%d】循环【%d:%s】chan【%d】", b.Idx, writeMsg.RoomId, tools.StoreMap[writeMsg.RoomId].Name, len(b.Routines))

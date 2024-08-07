@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"github.com/zeromicro/go-zero/core/jsonx"
+	"github.com/zeromicro/go-zero/core/logx"
 	"io"
 	"log"
 	"net/http"
@@ -29,6 +30,7 @@ type DefaultUser struct {
 	AuthToken string
 	Client    *TestClient
 	IsClose   chan int
+	Log       logx.Logger
 }
 
 type ApiResponse struct {
@@ -47,6 +49,7 @@ type TestClient struct {
 	RevMsgChan  chan types.WriteMsgBody
 	RevMsgFail  chan string
 	QAChan      chan QA
+	RoomName    string
 }
 
 type QA struct {
@@ -71,6 +74,7 @@ func (u *DefaultUser) InitUserInfo(autoToken string) {
 	request.Header.Add("Content-Type", "application/json")
 	request.Header.Add("Autotoken", autoToken)
 	request.Header.Add("Authorization", "")
+	request.Header.Add("Status", "2")
 
 	resp, err := client.Do(request)
 	defer resp.Body.Close()
@@ -95,7 +99,7 @@ func (u *DefaultUser) InitUserInfo(autoToken string) {
 	u.IsClose = make(chan int)
 }
 
-func (u *DefaultUser) InitSocket(url string) {
+func (u *DefaultUser) InitSocket(url string, roomName string) {
 	if u.AuthToken == "" {
 		panic("token为空，不进行InitSocket\n")
 	}
@@ -110,6 +114,7 @@ func (u *DefaultUser) InitSocket(url string) {
 		RevMsgFail:  make(chan string, 100),
 		QAChan:      make(chan QA, 100),
 		Timeout:     30,
+		RoomName:    "",
 	}
 }
 
@@ -151,7 +156,7 @@ func (t *TestClient) Read() {
 				t.RevMsgFail <- fmt.Sprintf("读取失败：jsonx.Unmarshal %s\n " + err.Error())
 				continue
 			}
-			fmt.Printf("msg:%v\n", msg)
+			fmt.Printf("msg:%v %s\n", msg, t.RoomName)
 			//fmt.Printf("%s 管道未读条数：%d\n", time.Now().Format("2006-01-02 15:04:05"), len(t.RevMsgChan))
 			t.RevMsgChan <- msg
 		}
@@ -170,6 +175,140 @@ func (t *TestClient) Send() {
 			if err != nil {
 				log.Println("send t.Conn.WriteMessage fail:", err.Error())
 				continue
+			}
+		}
+	}()
+}
+
+// Operator
+// @Desc：
+// @param：url
+func (u *DefaultUser) Operator(idx uint32, url string, roomId int64, roomName string) {
+	go func() {
+		u.InitSocket(url, roomName)
+		u.Client.Auth(u.AuthToken, roomId, u.UserId)
+		u.Read()
+		u.SendQA()
+		select {
+		case isClose := <-u.IsClose:
+			if isClose == 1 {
+				goto END
+			}
+		}
+	END:
+		u.Log.Errorf("【%s】房【%s】断开连接", roomName)
+		return
+	}()
+}
+
+func (u *DefaultUser) Read() {
+	go func() {
+		var (
+			clientIdStr string
+			roomIdStr   string
+			userIdStr   string
+			roomId      int64
+			fromUserId  int64
+		)
+		for {
+			select {
+			case e := <-u.Client.RevMsgFail:
+				_ = u.Client.Conn.Close()
+				u.IsClose <- 1
+				fmt.Printf("断开连接：%v\n", e)
+				goto END
+			case m := <-u.Client.RevMsgChan:
+				if m.Method == consts.METHOD_ENTER_MSG {
+					if data, ok := m.Event.Data.(map[string]interface{}); !ok {
+						fmt.Printf("m.Event.Data typeOf types.DataByEnter not ok\n")
+					} else {
+						clientIdStr = data["clientId"].(string)
+						u.Client.ClientId, _ = strconv.ParseInt(clientIdStr, 10, 64)
+					}
+				} else if m.Method == consts.METHOD_NORMAL_MSG {
+					if data, ok := m.Event.Data.(map[string]interface{}); !ok {
+						fmt.Printf("m.Event.Data typeOf types.DataByNormal not ok\n")
+					} else {
+						if m.Operate == consts.OPERATE_SINGLE_MSG {
+							fmt.Printf(m.ResponseTime+":私聊消息：\n     %s\n", data["message"])
+						} else if m.Operate == consts.OPERATE_GROUP_MSG {
+							fmt.Printf(m.ResponseTime+":广播消息：\n     %s\n", data["message"])
+						}
+						roomIdStr, _ = data["roomId"].(string)
+						userIdStr = data["fromUserId"].(string)
+						if u.UserName == "蜻蜓队长(管理员)" {
+							roomId, _ = strconv.ParseInt(roomIdStr, 10, 64)
+							fromUserId, _ = strconv.ParseInt(userIdStr, 10, 64)
+							u.Client.QAChan <- QA{
+								roomId:       roomId,
+								fromUserId:   fromUserId,
+								fromUserName: data["fromUserName"].(string),
+								message:      data["message"].(string),
+							}
+						}
+					}
+				}
+			}
+		}
+	END:
+		return
+	}()
+}
+
+func (u *DefaultUser) Send(operate int, roomId int64, toUserId int64, msg string, after time.Duration, sendNum int, autoToken string) {
+	send := types.ReceiveMsg{
+		Version:      1,
+		Operate:      operate,
+		Method:       consts.METHOD_NORMAL_MSG,
+		AuthToken:    autoToken,
+		RoomId:       roomId,
+		FromUserId:   u.UserId,
+		FromClientId: u.Client.ClientId,
+		ToUserId:     toUserId,
+		Event:        types.Event{},
+	}
+	sendIndex := 0
+	go func() {
+		for {
+			// 限制发送次数
+			if sendNum > 0 && sendIndex >= sendNum {
+				return
+			}
+			select {
+			case <-time.After(after):
+				sendIndex++
+				send.Event.Params = "自动回复:" + msg
+				u.Client.SendMsgChan <- send
+			}
+		}
+	}()
+}
+
+func (u *DefaultUser) SendQA() {
+	var (
+		now        time.Time
+		weekday    time.Weekday
+		sendMsg    = ""
+		week       string
+		weekdayStr = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
+	)
+	go func() {
+		for {
+			select {
+			case msg := <-u.Client.QAChan:
+				switch msg.message {
+				case "我是谁":
+					sendMsg = "你是 " + msg.fromUserName
+					u.Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, sendMsg, 0*time.Second, 1, u.AuthToken)
+					//time.Sleep(500 * time.Millisecond)
+					//Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, "再偷偷私信你~你叫 "+msg.fromUserName, 0*time.Second, 1, user.AuthToken)
+				case "当前时间":
+					now = time.Now()
+					weekday = now.Weekday()
+					week = weekdayStr[weekday]
+					sendMsg = fmt.Sprintf("私信---今天是%s %s", now.Format("2006-01-02 15:04:05"), week)
+					u.Send(consts.OPERATE_GROUP_MSG, msg.roomId, msg.fromUserId, sendMsg, 0*time.Second, 1, u.AuthToken)
+				}
 			}
 		}
 	}()

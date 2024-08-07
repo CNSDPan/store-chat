@@ -105,6 +105,7 @@ func (s *Server) writeChannel(client *Client) {
 				return
 			}
 		case message, ok := <-client.Broadcast:
+			s.Log.Errorf("%s 接收 Broadcast 【%s】", s.ServerName, tools.StoreMap[message.RoomId].Name)
 			// 每次写之前，都需要设置超时时间，如果只设置一次就会出现总是超时
 			_ = client.WsConn.SetWriteDeadline(time.Now().Add(WriteWait))
 			if !ok {

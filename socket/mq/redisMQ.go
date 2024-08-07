@@ -44,8 +44,6 @@ func (sub *Subscribe) SubReceive() {
 	go func() {
 		var (
 			err error
-			//msg interface{}
-			//m   *redis.Message
 		)
 		defer sub.PubSub.Close()
 		pubSubCh := sub.PubSub.Channel()
@@ -58,11 +56,11 @@ func (sub *Subscribe) SubReceive() {
 				if writeMsg.Operate == consts.OPERATE_SINGLE_MSG {
 					// 私人消息
 					bucket := server.DefaultServer.GetBucket(writeMsg.ToUserId)
-					bucket.Routines <- writeMsg
+					bucket.BroadcastRoom(writeMsg)
 				} else if writeMsg.Operate == consts.OPERATE_GROUP_MSG {
 					// 群消息
 					for _, bucket := range server.DefaultServer.Buckets {
-						bucket.Routines <- writeMsg
+						bucket.BroadcastRoom(writeMsg)
 					}
 				}
 			}

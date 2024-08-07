@@ -38,3 +38,8 @@ func TestCreateUser(t *testing.T) {
 	res := mysqls.NewUserMgr().Create(&users)
 	fmt.Printf("创建 %v", res.Error)
 }
+
+func TestQuery(t *testing.T) {
+	u, _ := mysqls.NewUserMgr().GetUser(mysqls.Users{Token: "2gDGQwDxsrX0UG8yRbophdHxHqD"})
+	fmt.Printf("%#v \r\n", u)
+}
