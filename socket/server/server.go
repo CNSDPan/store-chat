@@ -105,7 +105,6 @@ func (s *Server) writeChannel(client *Client) {
 				return
 			}
 		case message, ok := <-client.Broadcast:
-			s.Log.Errorf("%s 接收 Broadcast 【%s】", s.ServerName, tools.StoreMap[message.RoomId].Name)
 			// 每次写之前，都需要设置超时时间，如果只设置一次就会出现总是超时
 			_ = client.WsConn.SetWriteDeadline(time.Now().Add(WriteWait))
 			if !ok {
@@ -239,7 +238,6 @@ func (s *Server) readChannel(client *Client) {
 				userClient.SystemId = s.ServerIp
 				userClient.AuthToken = receiveMsg.AuthToken
 				bucket.AddBucket(roomId, client, userClient)
-				//s.Log.Errorf("进入房间;IP【%s】池子【%d】房间【%s】用户【%s】", s.ServerIp, bucket.Idx, tools.StoreMap[client.RoomId].Name, userClient.UserName)
 				s.Log.Errorf("池子【%d】池子房间数【%d】该房间连接数【%d】该用户连接数【%d】房间【%s】", bucket.Idx, len(bucket.RoomMap), len(bucket.RoomMap[client.RoomId].Clients), len(userClient.RoomClients), tools.StoreMap[client.RoomId].Name)
 				// 存储用户socket连接在哪个服务id,同一个账号每次连接都可能会处于不同的服务中
 				chatKey := fmt.Sprintf("%s_%d;%s", s.ServerId, userClient.BucketId, userClient.AuthToken)

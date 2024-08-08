@@ -40,50 +40,26 @@ func TestVirtualUser(t *testing.T) {
 	}
 }
 
-func TestUser1Room1(t *testing.T) {
-	user.InitUserInfo("2gDGQwDxsrX0UG8yRbophdHxHqD")
-	user.InitSocket(socketUrl, "")
-	user.Client.Auth(user.AuthToken, 1810940924055547904, user.UserId)
-	user.Read()
-	user.SendQA()
-	select {
-	case isClose := <-user.IsClose:
-		if isClose == 1 {
-			goto END
-		}
-	}
-END:
-	fmt.Printf("关闭连接\n")
-	return
-}
-
-func TestUser2Room1(t *testing.T) {
-	user.InitUserInfo("2gDGQugkyFF4MI10hK7WfT3W3Pe")
-	user.InitSocket(socketUrl, "")
-	user.Client.Auth(user.AuthToken, 1810940924055547904, user.UserId)
-	go func() {
-		user.Read()
-	}()
-	//SendQA()
-	select {
-	case isClose := <-user.IsClose:
-		if isClose == 1 {
-			goto END
-		}
-	}
-END:
-	fmt.Printf("关闭连接\n")
-	return
-}
-
 func TestGoUser1(t *testing.T) {
 	user.Log = logx.WithContext(context.Background())
 	user.InitUserInfo("2gDGQwDxsrX0UG8yRbophdHxHqD")
-
 	var roomMap = tools.StoreMap
+	var idx = uint32(0)
 	for _, room := range roomMap {
-		//fmt.Printf(room.Name)
-		user.Operator(uint32(0), socketUrl, room.StoreID, room.Name)
+		user.Operator(idx, socketUrl, room.StoreID, room.Name)
+		idx++
+	}
+	select {}
+}
+
+func TestGoUser2(t *testing.T) {
+	user.Log = logx.WithContext(context.Background())
+	user.InitUserInfo("2gDGQugkyFF4MI10hK7WfT3W3Pe")
+	var roomMap = tools.StoreMap
+	var idx = uint32(0)
+	for _, room := range roomMap {
+		user.Operator(idx, socketUrl, room.StoreID, room.Name)
+		idx++
 	}
 	select {}
 }

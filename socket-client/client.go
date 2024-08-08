@@ -1,4 +1,4 @@
-package socket_client
+package main
 
 import (
 	"context"
@@ -37,9 +37,11 @@ func (c *ClientMap) Run() {
 	var roomMap = tools.StoreMap
 	// nginx 负载均衡代理地址
 	var url = "ws://websocket.cn:6990/ws"
-	for idx, client := range c.Clients {
+	for _, client := range c.Clients {
+		var idx = uint32(0)
 		for _, room := range roomMap {
-			client.Operator(uint32(idx), url, room.StoreID, room.Name)
+			client.Operator(idx, url, room.StoreID, room.Name)
+			idx++
 		}
 	}
 }

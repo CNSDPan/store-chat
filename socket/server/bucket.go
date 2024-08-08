@@ -1,9 +1,7 @@
 package server
 
 import (
-	"fmt"
 	"store-chat/tools/consts"
-	"store-chat/tools/tools"
 	"store-chat/tools/types"
 	"sync"
 )
@@ -78,7 +76,6 @@ func (b *Bucket) UnBucket(client *Client) {
 	defer b.Clock.Unlock()
 	b.Clock.Lock()
 	if userClient, ok := b.UserClientMap[client.UserId]; ok {
-		fmt.Printf("移除连接池:rid:%d u:%s", client.RoomId, userClient.UserName)
 		userClient.UnClientMap(client.RoomId)
 		if len(userClient.RoomClients) == 0 {
 			delete(b.UserClientMap, client.UserId)
@@ -124,7 +121,6 @@ func (b *Bucket) RoutineWriteMsg() {
 						}
 					}
 				}
-				DefaultServer.Log.Errorf("idx【%d】循环【%d:%s】chan【%d】", b.Idx, writeMsg.RoomId, tools.StoreMap[writeMsg.RoomId].Name, len(b.Routines))
 			}
 		}
 	}()

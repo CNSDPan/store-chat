@@ -64,10 +64,11 @@ func (uClient *UserClient) AddClientMap(roomId int64, client *Client) {
 	// 判断是否已经加入过房间
 	if lastClient, ok := uClient.RoomClients[roomId]; ok && lastClient.ClientId != client.ClientId {
 		lastClient.IsRepeatConn = consts.REPEAT_CONN
-		lastClient.HandleClose <- "run"
+		lastClient.HandleDown()
 	}
 	client.IsRepeatConn = consts.FIRST_CONN
 	uClient.RoomClients[roomId] = client
+	return
 }
 
 // UnClientMap 移除群聊|私聊
@@ -108,6 +109,14 @@ func (uClient *UserClient) CheckSystemId(systemId string) bool {
 func (client *Client) Push(writeMsg types.WriteMsg) (err error) {
 	select {
 	case client.Broadcast <- writeMsg:
+	default:
+	}
+	return
+}
+
+func (client *Client) HandleDown() {
+	select {
+	case client.HandleClose <- "run":
 	default:
 	}
 	return
