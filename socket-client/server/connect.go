@@ -13,13 +13,14 @@ import (
 	"store-chat/tools/commons"
 	"store-chat/tools/consts"
 	"store-chat/tools/types"
+	"store-chat/tools/yamls"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-var apiUrl = "http://192.168.33.10:7000"
+var apiUrl = ""
 var loginUrl = "/api/user/login"
 
 type UserApi interface {
@@ -34,6 +35,7 @@ type DefaultUser struct {
 	AuthToken string
 	Clients   []*TestClient
 	Log       logx.Logger
+	Conf      *yamls.SocketClientCon
 }
 
 type ApiResponse struct {
@@ -67,6 +69,7 @@ type QA struct {
 }
 
 func (u *DefaultUser) InitUserInfo(autoToken string) {
+	apiUrl = u.Conf.HttpApiUrl
 	client := http.Client{}
 	req := map[string]interface{}{
 		"version":     "1",

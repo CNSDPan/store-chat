@@ -1,0 +1,7 @@
+#仿照前端创建websocket客户端的配置
+Name: "socket.client"
+ServerName: "socket.client服务:"
+# 服务端的websocket地址,我做了nginx代理，所以这里的地址填的是nginx代理地址
+WebsocketUrl: "ws://websocket.cn:6990/ws"
+# API接口地址
+HttpApiUrl: "http://192.168.33.10:7000"
