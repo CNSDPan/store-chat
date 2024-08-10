@@ -2,3 +2,4 @@
 /api/bin/*
 /rpc/socket/bin/*
 /socket/bin/*
+/socket-client/bin/*

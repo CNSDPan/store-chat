@@ -36,7 +36,6 @@ services:
         ipv4_address: 172.20.2.102
   websocket1:
     container_name: websocket1
-    #使用别人的构造器
     image: debian:latest
     ports:
       - "6991:8888"
@@ -54,7 +53,6 @@ services:
         ipv4_address: 172.20.2.198
   websocket2:
     container_name: websocket2
-    #使用别人的构造器
     image: debian:latest
     ports:
       - "6992:8888"
@@ -88,6 +86,23 @@ services:
     networks:
       store:
         ipv4_address: 172.20.2.101
+  #挂载管理员socket的容器，用来自动回复和压测推送消息
+  websocket.client:
+    container_name: websocket.client
+    image: debian:latest
+    ports:
+      - "6993:8888"
+    environment:
+      - TZ=${TZ}
+      - LANG=${LANG}
+    volumes:
+      - ${APP_PATH}/socket-client/bin/socket.client.bin:${MOUNT_PATH}/socket.client.bin
+      - ${APP_PATH}/tmp/:${MOUNT_PATH}/tmp
+      - ${APP_PATH}/tools/:${MOUNT_PATH}/tools
+    command: /bin/bash -c "cd /var/www/store-chat&&./socket.client.bin module socket >> tmp/socket.client.err"
+    networks:
+      store:
+        ipv4_address: 172.20.2.197
 networks:
   store:
     name: store
