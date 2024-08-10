@@ -93,7 +93,7 @@ func (b *Bucket) UnBucket(client *Client) {
 	}
 }
 
-func (b *Bucket) BroadcastRoom(writeMsg types.WriteMsg) (err error) {
+func (b *Bucket) BroadcastRoom(writeMsg types.WriteMsg) {
 	select {
 	case b.Routines <- writeMsg:
 	default:

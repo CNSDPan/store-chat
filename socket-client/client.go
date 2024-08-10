@@ -27,8 +27,12 @@ func main() {
 	client2 := new(socket.DefaultUser)
 	client2.Log = logx.WithContext(context.Background())
 	client2.InitUserInfo("2gDGQugkyFF4MI10hK7WfT3W3Pe")
+	client3 := new(socket.DefaultUser)
+	client3.Log = logx.WithContext(context.Background())
+	client3.InitUserInfo("2kPybdu8GObZm5SVwHF1TLUrCE9")
 
-	DefaultClient.Clients = append(DefaultClient.Clients, client1, client2)
+	//DefaultClient.Clients = append(DefaultClient.Clients, client2)
+	DefaultClient.Clients = append(DefaultClient.Clients, client1, client2, client3)
 	DefaultClient.Run()
 	select {}
 }
@@ -38,8 +42,9 @@ func (c *ClientMap) Run() {
 	// nginx 负载均衡代理地址
 	var url = "ws://websocket.cn:6990/ws"
 	for _, client := range c.Clients {
-		var idx = uint32(0)
+		idx := uint32(0)
 		for _, room := range roomMap {
+			//iddx := idx
 			client.Operator(idx, url, room.StoreID, room.Name)
 			idx++
 		}

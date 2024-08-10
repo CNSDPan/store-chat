@@ -148,15 +148,15 @@ func (s *Server) writeChannel(client *Client) {
 // @param：client
 func (s *Server) readChannel(client *Client) {
 	var (
-		code         string
-		msg          string
-		receiveMsg   types.ReceiveMsg
-		userClient   = new(UserClient)
-		roomId       int64
-		ok           bool
-		sendMsg      string
-		toUserClient = new(UserClient)
-		toClient     *Client
+		code       string
+		msg        string
+		receiveMsg types.ReceiveMsg
+		userClient = new(UserClient)
+		roomId     int64
+		ok         bool
+		sendMsg    string
+		//toUserClient = new(UserClient)
+		//toClient     *Client
 	)
 	defer func() {
 		// 断开连接
@@ -207,20 +207,23 @@ func (s *Server) readChannel(client *Client) {
 		}
 		switch receiveMsg.Operate {
 		case consts.OPERATE_SINGLE_MSG:
-			if sendMsg, ok = receiveMsg.Event.Params.(string); !ok {
-				continue
-			}
-			bucket := s.GetBucket(receiveMsg.ToUserId)
-			if toUserClient, ok = bucket.UserClientMap[receiveMsg.ToUserId]; ok {
-				if toClient, ok = toUserClient.RoomClients[roomId]; ok {
-					receiveMsg.ToClientId = toClient.ClientId
-					receiveMsg.ToUserId = toUserClient.UserId
-					receiveMsg.ToUserName = toUserClient.UserName
-					if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, toUserClient.UserId, toUserClient.UserName, sendMsg); err != nil {
-						s.Log.Errorf("%s %s 私聊 %s：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, toUserClient.UserName, code, msg, err.Error())
-					}
+			if sendMsg, ok = receiveMsg.Event.Params.(string); ok {
+				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, receiveMsg.ToUserId, receiveMsg.ToUserName, sendMsg); err != nil {
+					s.Log.Errorf("%s %s 进群聊消息发布：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, code, msg, err.Error())
 				}
 			}
+			// 由于分布式部署,当前服务不一定能找到推送方的client，只能像群里一样发送，再通过池子或MQ层处理（单机绝对能找到）
+			//bucket := s.GetBucket(receiveMsg.ToUserId)
+			//if toUserClient, ok = bucket.UserClientMap[receiveMsg.ToUserId]; ok {
+			//	if toClient, ok = toUserClient.RoomClients[roomId]; ok {
+			//		receiveMsg.ToClientId = toClient.ClientId
+			//		receiveMsg.ToUserId = toUserClient.UserId
+			//		receiveMsg.ToUserName = toUserClient.UserName
+			//		if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, toUserClient.UserId, toUserClient.UserName, sendMsg); err != nil {
+			//			s.Log.Errorf("%s %s 私聊 %s：code:%s msg:%s fail:%s", s.ServerName, userClient.UserName, toUserClient.UserName, code, msg, err.Error())
+			//		}
+			//	}
+			//}
 		case consts.OPERATE_GROUP_MSG:
 			if sendMsg, ok = receiveMsg.Event.Params.(string); ok {
 				if code, msg, err = s.ClientManage.PushBroadcast(receiveMsg, userClient.SystemId, userClient.BucketId, 0, "", sendMsg); err != nil {

@@ -123,6 +123,10 @@ func (cManage *DefaultClientManage) PushBroadcast(receiveMsg types.ReceiveMsg, s
 		params, err = anypb.New(&socket.EventParamsNormal{
 			Message: sendMsg,
 		})
+	case consts.METHOD_PM_MSG:
+		params, err = anypb.New(&socket.EventParamsNormal{
+			Message: sendMsg,
+		})
 	case consts.METHOD_SERVER_MSG:
 		sendMsg = fmt.Sprintf("服务IP:%s、连接池：%d", systemId, bucketId)
 		receiveMsg.Method = consts.METHOD_NORMAL_MSG

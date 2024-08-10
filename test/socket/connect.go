@@ -55,6 +55,7 @@ type TestClient struct {
 	RoomName    string
 	Idx         uint32
 	IsClose     chan int
+	R           *rand.Rand
 }
 
 type QA struct {
@@ -62,6 +63,7 @@ type QA struct {
 	fromUserId   int64
 	fromUserName string
 	message      string
+	Extra        string
 }
 
 func (u *DefaultUser) InitUserInfo(autoToken string) {
@@ -122,6 +124,7 @@ func (u *DefaultUser) InitSocket(url string, roomName string, idx uint32) {
 		RoomName:    roomName,
 		Idx:         idx,
 		IsClose:     make(chan int),
+		R:           rand.New(rand.NewSource(time.Now().UnixNano())),
 	})
 }
 
@@ -165,11 +168,11 @@ func (t *TestClient) Read() {
 			}
 			//fmt.Printf("msg:%v %s\n", msg, t.RoomName)
 			//fmt.Printf("%s 管道未读条数：%d\n", time.Now().Format("2006-01-02 15:04:05"), len(t.RevMsgChan))
-			t.Push(msg)
+			t.ReadPush(msg)
 		}
 	}()
 }
-func (t *TestClient) Push(msg types.WriteMsgBody) {
+func (t *TestClient) ReadPush(msg types.WriteMsgBody) {
 	select {
 	case t.RevMsgChan <- msg:
 	}
@@ -178,16 +181,18 @@ func (t *TestClient) Push(msg types.WriteMsgBody) {
 func (t *TestClient) Send() {
 	go func() {
 		for {
-			r := <-t.SendMsgChan
-			b, err := jsonx.Marshal(r)
-			if err != nil {
-				log.Println("jsonx.Marshal fail:", err.Error())
-				continue
-			}
-			err = t.Conn.WriteMessage(websocket.TextMessage, b)
-			if err != nil {
-				log.Println("send t.Conn.WriteMessage fail:", err.Error())
-				continue
+			select {
+			case r := <-t.SendMsgChan:
+				b, err := jsonx.Marshal(r)
+				if err != nil {
+					log.Println("jsonx.Marshal fail:", err.Error())
+					continue
+				}
+				err = t.Conn.WriteMessage(websocket.TextMessage, b)
+				if err != nil {
+					log.Println("send t.Conn.WriteMessage fail:", err.Error())
+					continue
+				}
 			}
 		}
 	}()
@@ -220,6 +225,29 @@ func (u *DefaultUser) Operator(idx uint32, url string, roomId int64, roomName st
 							fromUserId:   u.UserId,
 							fromUserName: u.UserName,
 							message:      "红包推文",
+						}
+					}
+				}
+			} else if u.UserName == "压测官" {
+				for {
+					select {
+					case <-time.After(time.Hour):
+						iMax := u.Clients[idx].R.Intn(9000) + 1000
+						u.Clients[idx].QAChan <- QA{
+							roomId:       roomId,
+							fromUserId:   u.UserId,
+							fromUserName: u.UserName,
+							message:      "run-pm",
+							Extra:        strconv.Itoa(iMax),
+						}
+						for i := 0; i < iMax; i++ {
+							u.Clients[idx].QAChan <- QA{
+								roomId:       roomId,
+								fromUserId:   u.UserId,
+								fromUserName: u.UserName,
+								message:      "PM",
+								Extra:        strconv.Itoa(i),
+							}
 						}
 					}
 				}
@@ -261,20 +289,23 @@ func (t *TestClient) ReadMsg(user *DefaultUser) {
 						fmt.Printf("m.Event.Data typeOf types.DataByNormal not ok\n")
 					} else {
 						if m.Operate == consts.OPERATE_SINGLE_MSG {
-							fmt.Printf(m.ResponseTime+":私聊消息：\n     %s\n", data["message"])
+							fmt.Printf("[%s]%s:接收私聊消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
 						} else if m.Operate == consts.OPERATE_GROUP_MSG {
-							fmt.Printf(m.ResponseTime+":广播消息：\n     %s\n", data["message"])
+							fmt.Printf("[%s]%s:接收广播消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
 						}
 						roomIdStr, _ = data["roomId"].(string)
 						userIdStr = data["fromUserId"].(string)
-						if user.UserName == "蜻蜓队长(管理员)" || user.UserName == "和平星(管理员)" {
+						if user.UserName == "蜻蜓队长(管理员)" || user.UserName == "和平星(管理员)" || user.UserName == "压测官" {
 							roomId, _ = strconv.ParseInt(roomIdStr, 10, 64)
 							fromUserId, _ = strconv.ParseInt(userIdStr, 10, 64)
-							t.QAChan <- QA{
+							qA := QA{
 								roomId:       roomId,
 								fromUserId:   fromUserId,
 								fromUserName: data["fromUserName"].(string),
 								message:      data["message"].(string),
+							}
+							select {
+							case t.QAChan <- qA:
 							}
 						}
 					}
@@ -282,22 +313,6 @@ func (t *TestClient) ReadMsg(user *DefaultUser) {
 			}
 		}
 	}()
-}
-
-func (u *DefaultUser) Send(operate int, roomId int64, toUserId int64, msg string, after time.Duration, sendNum int, autoToken string, clientId int64, idx uint32) {
-	send := types.ReceiveMsg{
-		Version:      1,
-		Operate:      operate,
-		Method:       consts.METHOD_NORMAL_MSG,
-		AuthToken:    autoToken,
-		RoomId:       roomId,
-		FromUserId:   u.UserId,
-		FromClientId: clientId,
-		ToUserId:     toUserId,
-		Event:        types.Event{},
-	}
-	send.Event.Params = fmt.Sprintf("【%s:%s】BOX:%s", u.Clients[idx].RoomName, u.UserName, msg)
-	u.Clients[idx].SendMsgChan <- send
 }
 
 func (t *TestClient) SendQA(user *DefaultUser) {
@@ -308,13 +323,12 @@ func (t *TestClient) SendQA(user *DefaultUser) {
 		week       string
 		weekdayStr = [...]string{"周日", "周一", "周二", "周三", "周四", "周五", "周六"}
 		moneySlice = make([]float64, 10)
-		r          = rand.New(rand.NewSource(time.Now().UnixNano()))
 	)
 	moneySlice[0] = 0
 	for i := 1; i < 10; i++ {
 		select {
 		case <-time.Tick(time.Millisecond):
-			randNum := r.Float64()*(100-float64(i*10)) + float64(i*10)
+			randNum := t.R.Float64()*(100-float64(i*10)) + float64(i*10)
 			moneySlice[i], _ = strconv.ParseFloat(fmt.Sprintf("%.2f", randNum), 64)
 		}
 	}
@@ -323,36 +337,76 @@ func (t *TestClient) SendQA(user *DefaultUser) {
 		for {
 			select {
 			case msg := <-t.QAChan:
+				pushMsg := types.ReceiveMsg{
+					Version:      1,
+					Operate:      0,
+					Method:       consts.METHOD_NORMAL_MSG,
+					AuthToken:    user.AuthToken,
+					RoomId:       msg.roomId,
+					FromUserId:   user.UserId,
+					FromClientId: t.ClientId,
+					ToUserId:     0,
+					Event:        types.Event{},
+				}
 				if user.UserName == "蜻蜓队长(管理员)" {
 					switch msg.message {
 					case "我是谁":
 						sendMsg = "你是 " + msg.fromUserName
-						user.Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, sendMsg, 0*time.Second, 1, user.AuthToken, t.ClientId, t.Idx)
+						pushMsg.Operate = consts.OPERATE_GROUP_MSG
+						t.PushMsg(pushMsg, sendMsg, user)
 					case "当前时间":
 						now = time.Now()
 						weekday = now.Weekday()
 						week = weekdayStr[weekday]
 						sendMsg = fmt.Sprintf("私信---今天是%s %s", now.Format("2006-01-02 15:04:05"), week)
-						user.Send(consts.OPERATE_GROUP_MSG, msg.roomId, msg.fromUserId, sendMsg, 0*time.Second, 1, user.AuthToken, t.ClientId, t.Idx)
+
+						pushMsg.Operate = consts.OPERATE_SINGLE_MSG
+						pushMsg.ToUserId = msg.fromUserId
+						t.PushMsg(pushMsg, sendMsg, user)
 					}
 				}
 
 				if user.UserName == "和平星(管理员)" {
 					switch msg.message {
 					case "许愿和平星":
-						money := moneySlice[r.Intn(len(moneySlice))]
+						money := moneySlice[t.R.Intn(len(moneySlice))]
 						if money == 0 {
 							sendMsg = fmt.Sprintf("和平星与您插肩而过~下次再许愿吧")
 						} else {
 							sendMsg = fmt.Sprintf("恭喜您被和平星砸中了 获得$%v（纯文字）", money)
 						}
-						user.Send(consts.OPERATE_SINGLE_MSG, msg.roomId, msg.fromUserId, sendMsg, 0*time.Second, 1, user.AuthToken, t.ClientId, t.Idx)
+						pushMsg.Operate = consts.OPERATE_SINGLE_MSG
+						pushMsg.ToUserId = msg.fromUserId
+						t.PushMsg(pushMsg, sendMsg, user)
 					case "红包推文":
 						sendMsg = "输入`许愿和平星`即可随机获得红包奖励哦~"
-						user.Send(consts.OPERATE_GROUP_MSG, msg.roomId, 0, sendMsg, 0*time.Second, 1, user.AuthToken, t.ClientId, t.Idx)
+						pushMsg.Operate = consts.OPERATE_GROUP_MSG
+						t.PushMsg(pushMsg, sendMsg, user)
+					}
+				}
+
+				if user.UserName == "压测官" {
+					switch msg.message {
+					case "PM":
+						sendMsg = fmt.Sprintf("%s:%s", msg.message, msg.Extra)
+						pushMsg.Operate = consts.OPERATE_GROUP_MSG
+						pushMsg.Method = consts.METHOD_PM_MSG
+						t.PushMsg(pushMsg, sendMsg, user)
+					case "run-pm":
+						sendMsg = fmt.Sprintf("每小时随机进行 %s 消息推送压力测试", msg.Extra)
+						pushMsg.Operate = consts.OPERATE_GROUP_MSG
+						t.PushMsg(pushMsg, sendMsg, user)
 					}
 				}
 			}
 		}
 	}()
+}
+
+func (t *TestClient) PushMsg(send types.ReceiveMsg, msg string, user *DefaultUser) {
+	send.Event.Params = fmt.Sprintf("【%s:%s】BOX:%s", t.RoomName, user.UserName, msg)
+	select {
+	case t.SendMsgChan <- send:
+	}
+	return
 }

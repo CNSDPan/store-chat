@@ -65,6 +65,12 @@ func userTest() map[string]mysqls.UserApi {
 		Name:   "鲨鱼辣椒",
 		Fund:   int64(10000000),
 	}
+	userMaps["2kPybdu8GObZm5SVwHF1TLUrCE9"] = mysqls.UserApi{
+		UserID: int64(1821857196679131136),
+		Token:  "2kPybdu8GObZm5SVwHF1TLUrCE9",
+		Name:   "压测官",
+		Fund:   int64(10000000),
+	}
 	return userMaps
 }
 
@@ -122,6 +128,12 @@ func userByIdTest() map[int64]mysqls.UserApi {
 		UserID: int64(1821087524929171456),
 		Token:  "2kJyf703zSyhdKFBa2b9l2bjxWX",
 		Name:   "鲨鱼辣椒",
+		Fund:   int64(10000000),
+	}
+	userMaps[1821857196679131136] = mysqls.UserApi{
+		UserID: int64(1821857196679131136),
+		Token:  "2kPybdu8GObZm5SVwHF1TLUrCE9",
+		Name:   "压测官",
 		Fund:   int64(10000000),
 	}
 	return userMaps

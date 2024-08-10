@@ -16,6 +16,8 @@ const (
 	METHOD_NORMAL_MSG = "Normal"
 	// METHOD_SERVER_MSG 获取当前client所在的服务信息
 	METHOD_SERVER_MSG = "Server"
+	// METHOD_PM_MSG 压测消息推送
+	METHOD_PM_MSG = "PM"
 
 	// FIRST_CONN 最新连接
 	FIRST_CONN = "firstCONN"

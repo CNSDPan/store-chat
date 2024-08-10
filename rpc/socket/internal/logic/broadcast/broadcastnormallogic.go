@@ -90,6 +90,18 @@ func (l *BroadcastNormalLogic) BroadcastNormal(in *socket.ReqBroadcastMsg) (resu
 			FrommUserName: in.FromUserName,
 			Message:       params.Message,
 		}
+	case consts.METHOD_PM_MSG:
+		params := &socket.EventParamsNormal{}
+		if err = in.Event.Params.UnmarshalTo(params); err != nil {
+			result.Code = commons.SOCKET_BROADCAST_NORMAL_GROUP
+			goto resultHan
+		}
+		writeMsg.Body.Event.Data = types.DataByNormal{
+			RoomId:        in.RoomId,
+			FromUserId:    in.FromUserId,
+			FrommUserName: in.FromUserName,
+			Message:       params.Message,
+		}
 	}
 	if body, err = jsonx.Marshal(writeMsg); err != nil {
 		result.Code = commons.SOCKET_BROADCAST_NORMAL
