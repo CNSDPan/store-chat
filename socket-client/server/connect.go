@@ -255,7 +255,7 @@ func (u *DefaultUser) Operator(idx uint32, url string, roomId int64, roomName st
 		}()
 		u.Clients[idx].IsCloseRun(waiter)
 		waiter.Wait()
-		fmt.Printf("【%s】离开了【%s】\n", u.UserName, roomName)
+		//fmt.Printf("【%s】离开了【%s】\n", u.UserName, roomName)
 		return
 	}()
 }
@@ -271,28 +271,27 @@ func (t *TestClient) ReadMsg(user *DefaultUser) {
 		)
 		for {
 			select {
-			case e := <-t.RevMsgFail:
-				fmt.Printf("%v\n", e)
+			case <-t.RevMsgFail:
 				_ = t.Conn.Close()
 				t.IsClose <- 1
 
 			case m := <-t.RevMsgChan:
 				if m.Method == consts.METHOD_ENTER_MSG {
 					if data, ok := m.Event.Data.(map[string]interface{}); !ok {
-						fmt.Printf("m.Event.Data typeOf types.DataByEnter not ok\n")
+						//fmt.Printf("m.Event.Data typeOf types.DataByEnter not ok\n")
 					} else {
 						clientIdStr = data["clientId"].(string)
 						t.ClientId, _ = strconv.ParseInt(clientIdStr, 10, 64)
 					}
 				} else if m.Method == consts.METHOD_NORMAL_MSG {
 					if data, ok := m.Event.Data.(map[string]interface{}); !ok {
-						fmt.Printf("m.Event.Data typeOf types.DataByNormal not ok\n")
+						//fmt.Printf("m.Event.Data typeOf types.DataByNormal not ok\n")
 					} else {
-						if m.Operate == consts.OPERATE_SINGLE_MSG {
-							fmt.Printf("[%s]%s:接收私聊消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
-						} else if m.Operate == consts.OPERATE_GROUP_MSG {
-							fmt.Printf("[%s]%s:接收广播消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
-						}
+						//if m.Operate == consts.OPERATE_SINGLE_MSG {
+						//	fmt.Printf("[%s]%s:接收私聊消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
+						//} else if m.Operate == consts.OPERATE_GROUP_MSG {
+						//	fmt.Printf("[%s]%s:接收广播消息：\n     %s\n", user.UserName, m.ResponseTime, data["message"])
+						//}
 						roomIdStr, _ = data["roomId"].(string)
 						userIdStr = data["fromUserId"].(string)
 						if user.UserName == "蜻蜓队长(管理员)" || user.UserName == "和平星(管理员)" || user.UserName == "压测官" {

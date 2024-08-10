@@ -36,7 +36,7 @@ func main() {
 func (c *ClientMap) Run() {
 	var roomMap = tools.StoreMap
 	// nginx 负载均衡代理地址
-	var url = "ws://websocket.cn:6990/ws"
+	var url = "ws://192.168.33.10:6990/ws"
 	for _, client := range c.Clients {
 		idx := uint32(0)
 		for _, room := range roomMap {

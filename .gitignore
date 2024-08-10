@@ -3,3 +3,8 @@
 /rpc/socket/bin/*
 /socket/bin/*
 /socket-client/bin/*
+
+/api/etc/*.yaml
+/rpc/socket/etc/*.yaml
+/socket/etc/*.yaml
+/tools/yamls/*.yaml
