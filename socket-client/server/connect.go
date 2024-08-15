@@ -87,10 +87,10 @@ func (u *DefaultUser) InitUserInfo(autoToken string) {
 	request.Header.Add("Status", "2")
 
 	resp, err := client.Do(request)
-	defer resp.Body.Close()
 	if err != nil {
 		panic("请求登录:" + err.Error())
 	}
+	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if resp.StatusCode != 200 {
 		log.Fatalf("status code:%d error: %s body: %s", resp.StatusCode, resp.Status, string(body))

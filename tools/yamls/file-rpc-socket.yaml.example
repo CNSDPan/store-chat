@@ -1,8 +1,10 @@
 #rpc-websocket 的client配置选项
 Name: socket.rpc
+
 #rpc.socket的服务端口地址
 #Target: 0.0.0.0:8080
 Target: 192.168.33.10:8882
+
 Etcd:
   Hosts:
     - 192.168.33.10:20001

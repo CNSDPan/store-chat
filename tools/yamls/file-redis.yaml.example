@@ -8,4 +8,4 @@ AloneRedisConf:
   Password:
   DB: 10
 
-#哨兵模式
+#哨兵模式(不兼容)
