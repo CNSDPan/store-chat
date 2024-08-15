@@ -11,3 +11,4 @@
 
 /docker/dev/.env
 /docker/mysql/.env
+/.idea
