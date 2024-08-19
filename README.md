@@ -62,5 +62,5 @@
 
 ### 功能演示
 * 前端页面由 https://github.com/haostart/websocket-chat.git 提供,且改造开发的
-* 有需要可以参考参考
-* 演示地址；
+* 前端代码，有需要可以参考参考：
+* 演示地址；http://8.135.237.23:8081/login
