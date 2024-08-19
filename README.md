@@ -61,6 +61,5 @@
 * tools: 公共code|公共变量|工具|公共类型|公共配置
 
 ### 功能演示
-* 前端页面由 https://github.com/haostart/websocket-chat.git 提供,且改造开发的
-* 前端代码，有需要可以参考参考：
+* 前端页面由 https://github.com/haostart/websocket-chat.git 提供,且改造的
 * 演示地址；http://8.135.237.23:8081/login
