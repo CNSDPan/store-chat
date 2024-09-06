@@ -31,7 +31,7 @@ func (m *AutoTokenMiddleware) Handle(next http.HandlerFunc) http.HandlerFunc {
 			statusStr = "1"
 		}
 		status, _ := strconv.Atoi(statusStr)
-		// API接口没有使用rpc做业务处理，有需要自行更改
+		// API接口没有使用rpc做业务处理，有需要自行更改gu
 		if autoToken == "" {
 			result.Code, result.Message = commons.GetCodeMessage(commons.RESPONSE_UNAUTHORIZED)
 			httpx.OkJsonCtx(r.Context(), w, result)
